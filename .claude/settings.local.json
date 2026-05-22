@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sudo apt-get *)",
+      "Bash(npm run *)",
+      "Bash(curl -s -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImVsZW5hLm1AaW50ZXhhLmNvbSIsImV4cCI6MTc3OTQ4MzU1NSwicm9sZSI6IkFETUlOSVNUUkFET1IiLCJzdWIiOiI1MGM4MzRkNi01ODU1LTRhNmQtOWZkZC0yOWIwNzM1YmVhYjEifQ.hzTpNmjWq1JlrNRCndFGHCWxPJsBliZQTKZl2BunFLw' http://localhost:8080/api/v1/dashboard)",
+      "Read(//home/michelangelo/**)",
+      "Bash(npx tsc *)",
+      "Bash(echo \"exit:$?\")",
+      "Bash(bash -c \"ls /proc/ | xargs -I{} cat /proc/{}/cmdline 2>/dev/null | tr '\\\\0' ' ' | grep -i 'server\\\\|arca'\")",
+      "Bash(bash *)",
+      "Bash(curl -s http://localhost:8080/api/v1/auth/login -X POST -H \"Content-Type: application/json\" -d '{\"email\":\"admin@arca.local\",\"password\":\"admin\"}')",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s http://localhost:8080/api/v1/dashboard -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluQGFyY2EubG9jYWwiLCJleHAiOjE3Nzk1MDMxMjgsIm5hbWUiOiJBZG1pbiBMb2NhbCIsInJvbGUiOiJBRE1JTklTVFJBRE9SIiwic3ViIjoiNzhhZjBjNTAtMDRiZC00YzUwLTg0ZjctNDA3ZDMxYWJjYmE4In0.A_DcSCxK29SQaOYH7sFMnjJ4O1tpKg2_1MzwQoLHz8Y')"
+    ]
+  }
+}

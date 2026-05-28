@@ -9,7 +9,6 @@ import {
   Bell,
   Search,
   LogOut,
-  HelpCircle,
   RefreshCw,
   CheckCircle2,
   Menu,
@@ -79,7 +78,6 @@ export function MainLayout({ children, currentView, onNavigate, onLogout, onSync
         <div className="p-6 flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-brand-primary">Intexa ArCa</h1>
-            <p className="text-[10px] text-slate-400 font-medium tracking-wider mt-1">FINANCIAL CURATOR</p>
           </div>
           <button
             className="md:hidden p-1 text-slate-400 hover:text-slate-600"
@@ -112,10 +110,6 @@ export function MainLayout({ children, currentView, onNavigate, onLogout, onSync
         </nav>
 
         <div className="p-4 border-t border-slate-100 space-y-1">
-          <button className="w-full flex items-center gap-3 px-4 py-2 text-slate-500 hover:text-brand-primary text-sm transition-colors">
-            <HelpCircle size={18} />
-            <span>Ayuda</span>
-          </button>
           <button
             onClick={onLogout}
             className="w-full flex items-center gap-3 px-4 py-2 text-slate-500 hover:text-brand-primary text-sm transition-colors"

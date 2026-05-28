@@ -1,4 +1,4 @@
-import { useState, useRef, type ReactNode } from 'react';
+import { useState, useRef, useEffect, type ReactNode } from 'react';
 import {
   LayoutDashboard,
   Wallet,
@@ -16,7 +16,8 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import type { LoggedInUser } from '../App';
-import { siigoService, type SiigoSyncMode } from '../services';
+import { siigoService, notificationsService, type SiigoSyncMode, type NotificationSummary } from '../services';
+import { useSettings } from '../contexts/SettingsContext';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -33,7 +34,29 @@ export function MainLayout({ children, currentView, onNavigate, onLogout, onSync
   const [bootstrapDate, setBootstrapDate] = useState('');
   const [showBootstrapInput, setShowBootstrapInput] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationSummary | null>(null);
   const syncMenuRef = useRef<HTMLDivElement>(null);
+  const notifRef = useRef<HTMLDivElement>(null);
+  const { formatCurrency } = useSettings();
+
+  useEffect(() => {
+    notificationsService.get().then(setNotifications).catch(() => {});
+  }, []);
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setShowNotifications(false);
+      }
+      if (syncMenuRef.current && !syncMenuRef.current.contains(e.target as Node)) {
+        setShowSyncMenu(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   async function handleSyncSiigo(mode: SiigoSyncMode = 'incremental', dateStart?: string) {
     if (syncState === 'loading') return;
@@ -228,10 +251,68 @@ export function MainLayout({ children, currentView, onNavigate, onLogout, onSync
               )}
             </div>
 
-            <button className="p-2 text-slate-400 hover:text-brand-primary hover:bg-slate-50 rounded-lg relative transition-all">
-              <Bell size={20} />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-brand-danger border-2 border-white rounded-full" />
-            </button>
+            <div className="relative" ref={notifRef}>
+              <button
+                onClick={() => setShowNotifications(v => !v)}
+                className="p-2 text-slate-400 hover:text-brand-primary hover:bg-slate-50 rounded-lg relative transition-all"
+              >
+                <Bell size={20} />
+                {notifications && notifications.count > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-brand-danger text-white text-[10px] font-black rounded-full flex items-center justify-center px-1 border-2 border-white">
+                    {notifications.count > 99 ? '99+' : notifications.count}
+                  </span>
+                )}
+              </button>
+
+              {showNotifications && (
+                <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white rounded-3xl shadow-2xl border border-slate-100 z-50 overflow-hidden">
+                  <div className="p-5 border-b border-slate-100 flex justify-between items-center">
+                    <div>
+                      <h3 className="text-base font-black text-slate-900">Notificaciones</h3>
+                      <p className="text-xs text-slate-400 font-medium mt-0.5">
+                        {notifications?.count ?? 0} pendiente{notifications?.count !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                    <button onClick={() => setShowNotifications(false)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors">
+                      <X size={16} />
+                    </button>
+                  </div>
+
+                  <div className="max-h-[420px] overflow-y-auto divide-y divide-slate-50">
+                    {/* Gastos por Pagar */}
+                    {notifications && notifications.gastos.length > 0 && (
+                      <div>
+                        <div className="px-5 py-2.5 bg-slate-50/60 sticky top-0">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Gastos por Pagar</p>
+                        </div>
+                        {notifications.gastos.map(item => (
+                          <NotifItem key={item.id} item={item} formatCurrency={formatCurrency} />
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Ingresos Pendientes */}
+                    {notifications && notifications.ingresos.length > 0 && (
+                      <div>
+                        <div className="px-5 py-2.5 bg-slate-50/60 sticky top-0">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ingresos Pendientes</p>
+                        </div>
+                        {notifications.ingresos.map(item => (
+                          <NotifItem key={item.id} item={item} formatCurrency={formatCurrency} />
+                        ))}
+                      </div>
+                    )}
+
+                    {(!notifications || notifications.count === 0) && (
+                      <div className="p-10 text-center text-slate-400">
+                        <Bell size={32} className="mx-auto mb-3 opacity-30" />
+                        <p className="text-sm font-semibold">Sin pendientes</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
 
             <div className="hidden sm:block h-8 w-px bg-slate-200 mx-1" />
 
@@ -256,6 +337,33 @@ export function MainLayout({ children, currentView, onNavigate, onLogout, onSync
           {children}
         </div>
       </main>
+    </div>
+  );
+}
+
+// ── Notification item ─────────────────────────────────────────────────────────
+
+import type { NotificationItem } from '../services';
+
+function NotifItem({ item, formatCurrency }: { item: NotificationItem; formatCurrency: (n: number) => string }) {
+  const urgencyColors = {
+    overdue:  { dot: 'bg-brand-danger',  text: 'text-brand-danger',  label: item.daysOverdue === 1 ? '1 día vencido' : `${item.daysOverdue} días vencido` },
+    'due-soon': { dot: 'bg-amber-400',   text: 'text-amber-500',    label: item.daysOverdue === 0 ? 'Vence hoy' : `Vence en ${-item.daysOverdue}d` },
+    upcoming:  { dot: 'bg-slate-300',   text: 'text-slate-400',    label: `Vence en ${-item.daysOverdue}d` },
+  };
+  const style = urgencyColors[item.urgency];
+
+  return (
+    <div className="flex items-start gap-3 px-5 py-4 hover:bg-slate-50 transition-colors">
+      <span className={cn('mt-1.5 w-2 h-2 rounded-full shrink-0', style.dot)} />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-bold text-slate-900 truncate">{item.title}</p>
+        <p className="text-xs text-slate-400 mt-0.5">{item.category}</p>
+      </div>
+      <div className="text-right shrink-0">
+        <p className="text-sm font-black text-slate-900">{formatCurrency(item.amount)}</p>
+        <p className={cn('text-[10px] font-bold mt-0.5', style.text)}>{style.label}</p>
+      </div>
     </div>
   );
 }

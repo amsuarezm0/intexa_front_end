@@ -8,3 +8,4 @@ export * from './users';
 export * from './settings';
 export * from './categories';
 export * from './siigo';
+export * from './notifications';

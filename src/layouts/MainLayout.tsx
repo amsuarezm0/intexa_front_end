@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useRef, type ReactNode } from 'react';
 import {
   LayoutDashboard,
   Wallet,
@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import type { LoggedInUser } from '../App';
-import { siigoService } from '../services';
+import { siigoService, type SiigoSyncMode } from '../services';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -29,13 +29,19 @@ interface MainLayoutProps {
 
 export function MainLayout({ children, currentView, onNavigate, onLogout, onSyncSuccess, user }: MainLayoutProps) {
   const [syncState, setSyncState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [showSyncMenu, setShowSyncMenu] = useState(false);
+  const [bootstrapDate, setBootstrapDate] = useState('');
+  const [showBootstrapInput, setShowBootstrapInput] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const syncMenuRef = useRef<HTMLDivElement>(null);
 
-  async function handleSyncSiigo() {
+  async function handleSyncSiigo(mode: SiigoSyncMode = 'incremental', dateStart?: string) {
     if (syncState === 'loading') return;
     setSyncState('loading');
+    setShowSyncMenu(false);
+    setShowBootstrapInput(false);
     try {
-      await siigoService.sync();
+      await siigoService.sync({ mode, dateStart });
       setSyncState('success');
       onSyncSuccess?.();
       setTimeout(() => setSyncState('idle'), 3000);
@@ -146,24 +152,81 @@ export function MainLayout({ children, currentView, onNavigate, onLogout, onSync
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4 ml-auto">
-            {/* Sync button — icon-only on mobile */}
-            <button
-              onClick={handleSyncSiigo}
-              disabled={syncState === 'loading'}
-              title="Sincronizar Siigo"
-              className={cn(
-                "flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-sm font-semibold transition-all",
-                syncState === 'idle' && "bg-brand-primary/10 text-brand-primary hover:bg-brand-primary/20",
-                syncState === 'loading' && "bg-brand-primary/10 text-brand-primary opacity-70 cursor-not-allowed",
+            {/* Sync button with mode dropdown */}
+            <div className="relative" ref={syncMenuRef}>
+              <div className={cn(
+                "flex rounded-xl overflow-hidden text-sm font-semibold transition-all",
+                syncState === 'idle' && "bg-brand-primary/10 text-brand-primary",
+                syncState === 'loading' && "bg-brand-primary/10 text-brand-primary opacity-70",
                 syncState === 'success' && "bg-brand-success/10 text-brand-success",
                 syncState === 'error' && "bg-brand-danger/10 text-brand-danger",
+              )}>
+                <button
+                  onClick={() => handleSyncSiigo('incremental')}
+                  disabled={syncState === 'loading'}
+                  title="Sincronizar Siigo (últimos 90 días)"
+                  className="flex items-center gap-2 px-3 sm:px-4 py-2 hover:brightness-90 transition-all disabled:cursor-not-allowed"
+                >
+                  {syncState === 'success' ? <CheckCircle2 size={16} /> : <RefreshCw size={16} className={cn(syncState === 'loading' && "animate-spin")} />}
+                  <span className="hidden sm:inline">
+                    {syncState === 'loading' ? 'Sincronizando...' : syncState === 'success' ? 'Sincronizado' : syncState === 'error' ? 'Error' : 'Sincronizar'}
+                  </span>
+                </button>
+                <button
+                  onClick={() => setShowSyncMenu(v => !v)}
+                  disabled={syncState === 'loading'}
+                  className="px-2 py-2 border-l border-current/20 hover:brightness-90 transition-all disabled:cursor-not-allowed"
+                  title="Más opciones de sincronización"
+                >
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M6 8L1 3h10z"/></svg>
+                </button>
+              </div>
+
+              {showSyncMenu && (
+                <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden">
+                  <div className="p-1">
+                    <button
+                      onClick={() => handleSyncSiigo('incremental')}
+                      className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 rounded-xl transition-colors"
+                    >
+                      <p className="font-bold text-slate-900">Incremental</p>
+                      <p className="text-xs text-slate-400 mt-0.5">Últimos 90 días · automático diario</p>
+                    </button>
+                    <button
+                      onClick={() => handleSyncSiigo('reconcile')}
+                      className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 rounded-xl transition-colors"
+                    >
+                      <p className="font-bold text-slate-900">Reconciliar</p>
+                      <p className="text-xs text-slate-400 mt-0.5">Desde el registro más antiguo · mensual</p>
+                    </button>
+                    <button
+                      onClick={() => { setShowBootstrapInput(v => !v); }}
+                      className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 rounded-xl transition-colors"
+                    >
+                      <p className="font-bold text-slate-900">Carga inicial</p>
+                      <p className="text-xs text-slate-400 mt-0.5">Importar historial completo desde fecha</p>
+                    </button>
+                    {showBootstrapInput && (
+                      <div className="px-4 pb-3 space-y-2">
+                        <input
+                          type="date"
+                          value={bootstrapDate}
+                          onChange={e => setBootstrapDate(e.target.value)}
+                          className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+                        />
+                        <button
+                          onClick={() => bootstrapDate && handleSyncSiigo('bootstrap', bootstrapDate)}
+                          disabled={!bootstrapDate}
+                          className="w-full bg-brand-primary text-white py-2 rounded-xl text-sm font-bold disabled:opacity-40 hover:bg-brand-accent transition-colors"
+                        >
+                          Importar desde {bootstrapDate || '—'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
               )}
-            >
-              {syncState === 'success' ? <CheckCircle2 size={16} /> : <RefreshCw size={16} className={cn(syncState === 'loading' && "animate-spin")} />}
-              <span className="hidden sm:inline">
-                {syncState === 'loading' ? 'Sincronizando...' : syncState === 'success' ? 'Sincronizado' : syncState === 'error' ? 'Error' : 'Sincronizar Siigo'}
-              </span>
-            </button>
+            </div>
 
             <button className="p-2 text-slate-400 hover:text-brand-primary hover:bg-slate-50 rounded-lg relative transition-all">
               <Bell size={20} />

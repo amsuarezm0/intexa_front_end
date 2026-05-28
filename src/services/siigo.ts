@@ -1,10 +1,22 @@
 import { api } from '../lib/api';
 
-export interface SiigoSyncResponse {
-  message: string;
-  synced: number;
+export type SiigoSyncMode = 'incremental' | 'bootstrap' | 'reconcile';
+
+export interface SiigoSyncRequest {
+  mode: SiigoSyncMode;
+  dateStart?: string; // required for bootstrap
+  dateEnd?: string;
+}
+
+export interface SiigoSyncResult {
+  mode: SiigoSyncMode;
+  dateStart: string;
+  dateEnd: string;
+  invoicesImported: number;
+  purchasesImported: number;
+  updated: number;
 }
 
 export const siigoService = {
-  sync: () => api.post<SiigoSyncResponse>('/siigo/sync', {}),
+  sync: (req: SiigoSyncRequest) => api.post<SiigoSyncResult>('/siigo/sync', req),
 };

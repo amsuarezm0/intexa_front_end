@@ -11,10 +11,27 @@ interface LoginViewProps {
 
 export function LoginView({ onLogin }: LoginViewProps) {
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState('elena.m@intexa.com');
-  const [password, setPassword] = useState('password');
+  const [email, setEmail] = useState('michael_v613@hotmail.com');
+  const [password, setPassword] = useState('intexarca2026*');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [msLoading, setMsLoading] = useState(false);
+
+  const handleMicrosoftLogin = async () => {
+    setError('');
+    setMsLoading(true);
+    try {
+      const res = await authService.loginWithMicrosoft();
+      setToken(res.token);
+      onLogin(res.user);
+    } catch (err: any) {
+      if (err.errorCode !== 'user_cancelled') {
+        setError(err.message ?? 'Error al iniciar sesión con Microsoft');
+      }
+    } finally {
+      setMsLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: { preventDefault(): void }) => {
     e.preventDefault();
@@ -63,11 +80,16 @@ export function LoginView({ onLogin }: LoginViewProps) {
             <p className="text-slate-500 font-medium tracking-tight">Acceda a su panel de control financiero</p>
           </div>
 
-          <button className="w-full flex items-center justify-center gap-3 px-6 py-3 border border-slate-200 rounded-xl font-semibold text-slate-700 hover:bg-slate-50 transition-all">
+          <button
+            type="button"
+            onClick={handleMicrosoftLogin}
+            disabled={msLoading || loading}
+            className="w-full flex items-center justify-center gap-3 px-6 py-3 border border-slate-200 rounded-xl font-semibold text-slate-700 hover:bg-slate-50 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+          >
             <svg className="w-5 h-5" viewBox="0 0 23 23">
               <path fill="#f35325" d="M1 1h10v10H1z"/><path fill="#81bc06" d="M12 1h10v10H12z"/><path fill="#05a6f0" d="M1 12h10v10H1z"/><path fill="#ffba08" d="M12 12h10v10H12z"/>
             </svg>
-            Continuar con Microsoft
+            {msLoading ? 'Conectando con Microsoft...' : 'Continuar con Microsoft'}
           </button>
 
           <div className="relative">
@@ -124,9 +146,6 @@ export function LoginView({ onLogin }: LoginViewProps) {
             </button>
           </form>
 
-          <p className="text-sm text-slate-500 font-medium">
-            ¿No tienes una cuenta? <a href="#" className="text-brand-primary font-bold">Crear una cuenta</a>
-          </p>
         </motion.div>
       </main>
 

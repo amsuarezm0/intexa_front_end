@@ -24,10 +24,11 @@ interface MainLayoutProps {
   currentView: string;
   onNavigate: (view: any) => void;
   onLogout?: () => void;
+  onSyncSuccess?: () => void;
   user?: LoggedInUser | null;
 }
 
-export function MainLayout({ children, currentView, onNavigate, onLogout, user }: MainLayoutProps) {
+export function MainLayout({ children, currentView, onNavigate, onLogout, onSyncSuccess, user }: MainLayoutProps) {
   const [syncState, setSyncState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -37,6 +38,7 @@ export function MainLayout({ children, currentView, onNavigate, onLogout, user }
     try {
       await siigoService.sync();
       setSyncState('success');
+      onSyncSuccess?.();
       setTimeout(() => setSyncState('idle'), 3000);
     } catch {
       setSyncState('error');

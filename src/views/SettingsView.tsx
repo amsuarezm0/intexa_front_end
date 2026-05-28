@@ -1,18 +1,37 @@
 import { useState, useEffect } from 'react';
-import { UserPlus, MoreVertical, ChevronDown, ShieldCheck, History, Eye } from 'lucide-react';
+import { UserPlus, MoreVertical, ChevronDown, ShieldCheck, History, Eye, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Skeleton, SkeletonCard } from '../components/Skeleton';
 import { usersService, settingsService, type User, type Settings, type ActivityLog } from '../services';
 import { useSettings } from '../contexts/SettingsContext';
-import { cn } from '../lib/utils';
+import { getStoredUser } from '../lib/api';
+import { cn, hashPassword } from '../lib/utils';
+
+const ROLES = ['ADMINISTRADOR', 'TESORERÍA', 'VISUALIZADOR'];
+
+interface NewUserForm {
+  name: string;
+  email: string;
+  role: string;
+  password: string;
+}
+
+const emptyForm: NewUserForm = { name: '', email: '', role: 'VISUALIZADOR', password: '' };
 
 export function SettingsView() {
+  const currentUser = getStoredUser();
+  const isAdmin = currentUser?.role?.toUpperCase() === 'ADMINISTRADOR';
+
   const [users, setUsers] = useState<User[]>([]);
   const [settings, setSettings] = useState<Settings>({ baseCurrency: 'COP', autoExchangeRate: true });
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [showAddUser, setShowAddUser] = useState(false);
+  const [form, setForm] = useState<NewUserForm>(emptyForm);
+  const [formError, setFormError] = useState('');
+  const [creating, setCreating] = useState(false);
   const { locale, refreshSettings } = useSettings();
 
   useEffect(() => {
@@ -40,6 +59,23 @@ export function SettingsView() {
     }
   };
 
+  const handleAddUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError('');
+    setCreating(true);
+    try {
+      const hashed = await hashPassword(form.password);
+      const created = await usersService.create({ ...form, password: hashed });
+      setUsers(u => [...u, created]);
+      setShowAddUser(false);
+      setForm(emptyForm);
+    } catch (err: any) {
+      setFormError(err.message ?? 'No se pudo crear el usuario');
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const roleColor = (role: string) => {
     if (role === 'ADMINISTRADOR') return 'bg-brand-primary/10 text-brand-primary';
     if (role === 'TESORERÍA') return 'bg-brand-success/10 text-brand-success';
@@ -58,14 +94,18 @@ export function SettingsView() {
         <p className="text-slate-500 font-semibold tracking-tight text-lg">Gestiona usuarios, moneda base y auditoría de actividad.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+      <div className={cn("grid grid-cols-1 gap-10", isAdmin ? "lg:grid-cols-3" : "lg:grid-cols-1 max-w-lg")}>
+        {isAdmin && (
         <div className="lg:col-span-2 bg-white p-5 sm:p-10 rounded-3xl sm:rounded-[48px] border border-slate-100 card-shadow space-y-10">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
             <div className="space-y-1">
               <h3 className="text-2xl font-black text-brand-primary tracking-tight">Gestión de Usuarios</h3>
               <p className="text-sm font-semibold text-slate-400">Controla quién tiene acceso a los estados financieros.</p>
             </div>
-            <button className="flex items-center gap-2 bg-brand-success text-white px-6 py-3.5 rounded-2xl font-bold hover:bg-emerald-600 transition-all shadow-lg shadow-brand-success/20">
+            <button
+              onClick={() => { setShowAddUser(true); setFormError(''); setForm(emptyForm); }}
+              className="flex items-center gap-2 bg-brand-success text-white px-6 py-3.5 rounded-2xl font-bold hover:bg-emerald-600 transition-all shadow-lg shadow-brand-success/20"
+            >
               <UserPlus size={20} /><span>Añadir Usuario</span>
             </button>
           </div>
@@ -90,7 +130,63 @@ export function SettingsView() {
               </div>
             ))}
           </div>
+
+          {showAddUser && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-white rounded-[40px] p-8 sm:p-12 w-full max-w-md shadow-2xl space-y-8"
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tight">Nuevo Usuario</h3>
+                  <button onClick={() => setShowAddUser(false)} className="text-slate-400 hover:text-slate-700 transition-colors">
+                    <X size={24} />
+                  </button>
+                </div>
+                <form onSubmit={handleAddUser} className="space-y-5">
+                  {formError && (
+                    <div className="bg-brand-danger/10 border border-brand-danger/20 text-brand-danger text-sm font-semibold px-4 py-3 rounded-2xl">{formError}</div>
+                  )}
+                  {([['Nombre', 'name', 'text'], ['Correo electrónico', 'email', 'email'], ['Contraseña', 'password', 'password']] as const).map(([label, field, type]) => (
+                    <div key={field} className="space-y-2">
+                      <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest pl-1">{label}</label>
+                      <input
+                        type={type}
+                        required
+                        value={form[field]}
+                        onChange={e => setForm(f => ({ ...f, [field]: e.target.value }))}
+                        className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:bg-white focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none font-semibold"
+                      />
+                    </div>
+                  ))}
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest pl-1">Rol</label>
+                    <div className="relative">
+                      <select
+                        value={form.role}
+                        onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
+                        className="w-full pl-5 pr-12 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-700 appearance-none outline-none focus:border-brand-primary transition-all"
+                      >
+                        {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                      </select>
+                      <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
+                    </div>
+                  </div>
+                  <div className="flex gap-3 pt-2">
+                    <button type="button" onClick={() => setShowAddUser(false)} className="flex-1 py-4 rounded-2xl font-bold border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all">
+                      Cancelar
+                    </button>
+                    <button type="submit" disabled={creating} className="flex-1 py-4 rounded-2xl font-bold bg-brand-primary text-white hover:bg-brand-accent transition-all shadow-lg shadow-brand-primary/20 disabled:opacity-60">
+                      {creating ? 'Creando...' : 'Crear Usuario'}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          )}
         </div>
+        )}
 
         <div className="space-y-10">
           <div className="bg-white p-5 sm:p-10 rounded-3xl sm:rounded-[48px] border border-slate-100 card-shadow space-y-8">

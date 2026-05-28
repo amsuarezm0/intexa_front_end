@@ -19,4 +19,5 @@ export const settingsService = {
   get: () => api.get<Settings>('/settings'),
   update: (body: Settings) => api.put<Settings>('/settings', body),
   getActivityLogs: () => api.get<ActivityLog[]>('/activity-logs'),
+  getExchangeRates: () => api.get<Record<string, number>>('/exchange-rates'),
 };

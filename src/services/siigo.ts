@@ -6,5 +6,5 @@ export interface SiigoSyncResponse {
 }
 
 export const siigoService = {
-  sync: () => api.post<SiigoSyncResponse>('/sync/siigo', {}),
+  sync: () => api.post<SiigoSyncResponse>('/siigo/sync', {}),
 };

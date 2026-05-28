@@ -17,7 +17,7 @@ interface CreateMovementViewProps {
 
 export function CreateMovementView({ onBack, onSave, initialIsProjection = false }: CreateMovementViewProps) {
   const [type, setType] = useState<'Ingreso' | 'Egreso'>('Ingreso');
-  const [source, setSource] = useState<'SIIGO' | 'Manual'>('Manual');
+  const [source, setSource] = useState<'Siigo' | 'Manual'>('Manual');
   const [isProjection, setIsProjection] = useState(initialIsProjection);
   const [date, setDate] = useState('');
   const [amount, setAmount] = useState('');
@@ -165,22 +165,22 @@ export function CreateMovementView({ onBack, onSave, initialIsProjection = false
             <div className="space-y-4">
               <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest pl-1">ORIGEN DEL DATO</label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {(['SIIGO', 'Manual'] as const).map(s => (
+                {(['Siigo', 'Manual'] as const).map(s => (
                   <button key={s} onClick={() => setSource(s)} className={cn(
                     "relative p-6 rounded-3xl border-2 text-left transition-all group",
                     source === s ? "border-brand-primary bg-brand-primary/5" : "border-slate-100 bg-white hover:border-slate-200"
                   )}>
                     <div className="flex justify-between items-start mb-4">
                       <div className={cn("p-3 rounded-2xl transition-colors", source === s ? "bg-brand-primary text-white" : "bg-slate-100 text-slate-400 group-hover:bg-brand-primary/10 group-hover:text-brand-primary")}>
-                        {s === 'SIIGO' ? <Zap size={24} /> : <User size={24} />}
+                        {s === 'Siigo' ? <Zap size={24} /> : <User size={24} />}
                       </div>
                       {source === s && <div className="w-6 h-6 bg-brand-primary text-white rounded-full flex items-center justify-center p-1"><CheckCircle2 size={16} /></div>}
                     </div>
                     <div className="flex items-center gap-2 mb-1">
                       <p className="text-base font-black text-slate-900">{s}</p>
-                      {s === 'SIIGO' && <span className="text-[8px] font-black bg-brand-primary text-white px-2 py-0.5 rounded-md uppercase tracking-widest">AUTOMÁTICO</span>}
+                      {s === 'Siigo' && <span className="text-[8px] font-black bg-brand-primary text-white px-2 py-0.5 rounded-md uppercase tracking-widest">AUTOMÁTICO</span>}
                     </div>
-                    <p className="text-xs font-semibold text-slate-400">{s === 'SIIGO' ? 'Sincronizado vía ERP' : 'Entrada de usuario'}</p>
+                    <p className="text-xs font-semibold text-slate-400">{s === 'Siigo' ? 'Sincronizado vía ERP' : 'Entrada de usuario'}</p>
                   </button>
                 ))}
               </div>

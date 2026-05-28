@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Download, CheckCircle2, AlertCircle, ChevronRight, Sparkles } from 'lucide-react';
+import ExcelJS from 'exceljs';
+import { Download, TrendingUp, TrendingDown, ChevronRight, Sparkles } from 'lucide-react';
 import { motion } from 'motion/react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Skeleton, SkeletonCard, SkeletonChart } from '../components/Skeleton';
@@ -20,15 +21,15 @@ const CHART_TITLES: Record<ReportPeriod, string> = {
 };
 
 const CHART_SUBTITLES: Record<ReportPeriod, string> = {
-  mensual: 'Ejecutado vs. Presupuesto — Últimos 6 Meses (COP)',
-  trimestral: 'Ejecutado vs. Presupuesto — Q1 a Q4 del Año en Curso (COP)',
-  anual: 'Ejecutado vs. Presupuesto — ENE a DIC del Año en Curso (COP)',
+  mensual: 'Ingresos vs. Egresos — Últimos 6 Meses',
+  trimestral: 'Ingresos vs. Egresos — Q1 a Q4 del Año en Curso',
+  anual: 'Ingresos vs. Egresos — ENE a DIC del Año en Curso',
 };
 
-const DEVIATION_WINDOW: Record<ReportPeriod, string> = {
-  mensual: 'Mes en curso',
-  trimestral: 'Trimestre en curso',
-  anual: 'Año en curso (YTD)',
+const CATEGORY_WINDOW: Record<ReportPeriod, string> = {
+  mensual: 'Mes en curso vs. mes anterior',
+  trimestral: 'Trimestre en curso vs. trimestre anterior',
+  anual: 'Año en curso (YTD) vs. mismo período año anterior',
 };
 
 const PROJECTION_META: Record<ReportPeriod, { title: string; desc: string }> = {
@@ -46,51 +47,82 @@ const PROJECTION_META: Record<ReportPeriod, { title: string; desc: string }> = {
   },
 };
 
-function downloadCSV(data: ReportSummary, period: ReportPeriod, formatCurrency: (n: number) => string) {
-  const rows: string[][] = [];
+async function downloadXLSX(data: ReportSummary, period: ReportPeriod, formatCurrency: (n: number) => string) {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Intexa ArCa';
 
-  rows.push([`Reporte ${period.charAt(0).toUpperCase() + period.slice(1)} — INTEXA ARCA`]);
-  rows.push([]);
-
-  rows.push(['Flujo de Caja']);
-  rows.push(['Período', 'Ejecutado', 'Presupuesto']);
-  data.cashFlowChart.forEach(p => rows.push([p.name, String(p.ejecutado), String(p.presupuesto)]));
-  rows.push([]);
-
-  rows.push(['Gastos por Categoría']);
-  rows.push(['Categoría', 'Porcentaje']);
-  data.categoryBreakdown.forEach(c => rows.push([c.name, `${c.value}%`]));
-  rows.push([]);
-
-  rows.push(['Análisis de Desviación']);
-  rows.push(['Categoría', 'Presupuesto', 'Ejecutado Real', 'Desviación', 'Estado']);
-  data.deviationTable.forEach(r =>
-    rows.push([
-      r.category,
-      formatCurrency(r.budget),
-      formatCurrency(r.actual),
-      `${r.isPositive ? '+' : ''}${formatCurrency(r.deviation)}`,
-      r.isPositive ? 'OK' : 'Alerta',
-    ])
+  // Sheet 1: Flujo de Caja
+  const wsCash = wb.addWorksheet('Flujo de Caja');
+  wsCash.columns = [
+    { header: 'Período',    key: 'name',      width: 16 },
+    { header: 'Ingresos',   key: 'ingresos',  width: 24 },
+    { header: 'Egresos',    key: 'egresos',   width: 24 },
+  ];
+  wsCash.getRow(1).font = { bold: true };
+  wsCash.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+  data.cashFlowChart.forEach(p =>
+    wsCash.addRow({ name: p.name, ingresos: formatCurrency(p.ingresos), egresos: formatCurrency(p.egresos) })
   );
-  rows.push([]);
-  rows.push(['Cumplimiento', `${data.complianceRate}%`]);
-  rows.push(['Cierre Proyectado', formatCurrency(data.annual.projectedClose)]);
-  rows.push(['Probabilidad', `${data.annual.probability}%`]);
 
-  const csv = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
-  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  // Sheet 2: Gastos por Categoría
+  const wsCat = wb.addWorksheet('Gastos por Categoría');
+  wsCat.columns = [
+    { header: 'Categoría',   key: 'name',   width: 28 },
+    { header: 'Porcentaje',  key: 'value',  width: 14 },
+  ];
+  wsCat.getRow(1).font = { bold: true };
+  wsCat.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+  data.categoryBreakdown.forEach(c => wsCat.addRow({ name: c.name, value: `${c.value}%` }));
+
+  // Sheet 3: Gasto por Categoría (comparación)
+  const wsDev = wb.addWorksheet('Gasto por Categoría');
+  wsDev.columns = [
+    { header: 'Categoría',         key: 'category',  width: 28 },
+    { header: 'Período actual',    key: 'amount',    width: 24 },
+    { header: 'Período anterior',  key: 'prev',      width: 24 },
+    { header: 'Variación %',       key: 'change',    width: 16 },
+    { header: 'Estado',            key: 'status',    width: 12 },
+  ];
+  wsDev.getRow(1).font = { bold: true };
+  wsDev.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+  data.categoryTable.forEach(r =>
+    wsDev.addRow({
+      category: r.category,
+      amount:   formatCurrency(r.amount),
+      prev:     formatCurrency(r.prev),
+      change:   `${r.change > 0 ? '+' : ''}${r.change.toFixed(1)}%`,
+      status:   r.isPositive ? 'OK' : 'Alerta',
+    })
+  );
+
+  // Sheet 4: Resumen
+  const wsSum = wb.addWorksheet('Resumen');
+  wsSum.columns = [
+    { header: 'Indicador', key: 'label',  width: 28 },
+    { header: 'Valor',     key: 'value',  width: 24 },
+  ];
+  wsSum.getRow(1).font = { bold: true };
+  wsSum.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+  wsSum.addRow({ label: 'Período',           value: period.charAt(0).toUpperCase() + period.slice(1) });
+  wsSum.addRow({ label: 'Flujo positivo',    value: `${data.complianceRate}%` });
+  wsSum.addRow({ label: 'Cierre Proyectado', value: formatCurrency(data.annual.projectedClose) });
+  wsSum.addRow({ label: 'Probabilidad',      value: `${data.annual.probability}%` });
+  wsSum.addRow({ label: 'Insight',           value: data.annual.insightText });
+
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `reporte-${period}-arca.csv`;
+  a.download = `reporte-${period}-arca.xlsx`;
   a.click();
   URL.revokeObjectURL(url);
 }
 
 export function ReportsView() {
-  const [data, setData] = useState<ReportSummary | null>(null);
+  const [data, setData] = useState<ReportSummary>({ cashFlowChart: [], categoryBreakdown: [], categoryTable: [], annual: { projectedClose: 0, probability: 0, insightText: '—' }, complianceRate: 0 });
   const [isLoading, setIsLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState('');
   const [period, setPeriod] = useState<ReportPeriod>('mensual');
 
@@ -106,7 +138,7 @@ export function ReportsView() {
   const { formatCurrency } = useSettings();
 
   if (error) return <div className="p-8 text-brand-danger font-semibold">{error}</div>;
-  if (isLoading || !data) {
+  if (isLoading) {
     return (
       <div className="space-y-8">
         <Skeleton className="h-10 w-64" />
@@ -142,11 +174,16 @@ export function ReportsView() {
             ))}
           </div>
           <button
-            onClick={() => data && downloadCSV(data, period, formatCurrency)}
-            disabled={!data || isLoading}
+            onClick={async () => {
+              if (!data || isExporting) return;
+              setIsExporting(true);
+              try { await downloadXLSX(data, period, formatCurrency); }
+              finally { setIsExporting(false); }
+            }}
+            disabled={!data || isLoading || isExporting}
             className="flex items-center gap-2 bg-brand-dark text-white px-6 py-3 rounded-xl font-bold hover:bg-brand-accent transition-all shadow-lg shadow-brand-dark/20 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Download size={20} /><span>Descargar CSV</span>
+            <Download size={20} /><span>{isExporting ? 'Generando...' : 'Descargar Reporte'}</span>
           </button>
         </div>
       </div>
@@ -159,8 +196,8 @@ export function ReportsView() {
               <p className="text-sm font-bold text-slate-400 mt-1 uppercase tracking-tight">{CHART_SUBTITLES[period]}</p>
             </div>
             <div className="flex gap-6">
-              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-brand-success" /><span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">EJECUTADO</span></div>
-              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-brand-primary" /><span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">PRESUPUESTO</span></div>
+              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-brand-success" /><span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">INGRESOS</span></div>
+              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-brand-danger" /><span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">EGRESOS</span></div>
             </div>
           </div>
           <div className="h-[300px]">
@@ -170,8 +207,8 @@ export function ReportsView() {
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 800 }} dy={15} />
                 <YAxis hide />
                 <Tooltip cursor={{ fill: '#F1F5F9' }} contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }} />
-                <Bar dataKey="ejecutado" fill="#10B981" radius={[8, 8, 0, 0]} barSize={24} />
-                <Bar dataKey="presupuesto" fill="#003366" radius={[8, 8, 0, 0]} barSize={24} />
+                <Bar dataKey="ingresos" name="Ingresos" fill="#10B981" radius={[8, 8, 0, 0]} barSize={24} />
+                <Bar dataKey="egresos" name="Egresos" fill="#EF4444" radius={[8, 8, 0, 0]} barSize={24} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -200,33 +237,35 @@ export function ReportsView() {
       <div className="bg-white rounded-3xl sm:rounded-[48px] border border-slate-100 card-shadow overflow-hidden">
         <div className="p-5 sm:p-10 border-b border-slate-100 flex justify-between items-center">
           <div>
-              <h3 className="text-2xl font-black text-slate-900 tracking-tight">Análisis de Desviación</h3>
-              <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">{DEVIATION_WINDOW[period]}</p>
-            </div>
-          <span className="bg-brand-success/10 text-brand-success text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest border border-brand-success/20">CUMPLIMIENTO: {data.complianceRate}%</span>
+            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Gasto por Categoría</h3>
+            <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">{CATEGORY_WINDOW[period]}</p>
+          </div>
+          <span className="bg-brand-success/10 text-brand-success text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest border border-brand-success/20">FLUJO POSITIVO: {data.complianceRate}%</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
               <tr className="bg-slate-50/50">
-                {['CATEGORÍA', 'PRESUPUESTO', 'EJECUTADO REAL', 'DESVIACIÓN', 'ESTADO'].map(h => (
+                {['CATEGORÍA', 'PERÍODO ACTUAL', 'PERÍODO ANTERIOR', 'VARIACIÓN', 'TENDENCIA'].map(h => (
                   <th key={h} className={cn("px-4 sm:px-10 py-3 sm:py-6 text-[10px] font-bold text-slate-400 uppercase tracking-widest", h !== 'CATEGORÍA' && 'text-right')}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {data.deviationTable.map((row, i) => (
+              {(data.categoryTable ?? []).map((row, i) => (
                 <tr key={i} className="hover:bg-slate-50 transition-colors cursor-default">
                   <td className="px-4 sm:px-10 py-4 sm:py-8 text-sm font-black text-slate-900">{row.category}</td>
-                  <td className="px-4 sm:px-10 py-4 sm:py-8 text-sm font-bold text-slate-400 text-right">{formatCurrency(row.budget)}</td>
-                  <td className="px-4 sm:px-10 py-4 sm:py-8 text-sm font-black text-brand-success text-right">{formatCurrency(row.actual)}</td>
-                  <td className={cn("px-4 sm:px-10 py-4 sm:py-8 text-sm font-black text-right", row.isPositive ? "text-brand-success" : "text-brand-danger")}>
-                    {row.isPositive ? '+' : ''}{formatCurrency(row.deviation)}
+                  <td className="px-4 sm:px-10 py-4 sm:py-8 text-sm font-black text-slate-900 text-right">{formatCurrency(row.amount)}</td>
+                  <td className="px-4 sm:px-10 py-4 sm:py-8 text-sm font-bold text-slate-400 text-right">{row.prev > 0 ? formatCurrency(row.prev) : '—'}</td>
+                  <td className={cn("px-4 sm:px-10 py-4 sm:py-8 text-sm font-black text-right", row.prev === 0 ? 'text-slate-400' : row.isPositive ? 'text-brand-success' : 'text-brand-danger')}>
+                    {row.prev === 0 ? 'Nuevo' : `${row.change > 0 ? '+' : ''}${row.change.toFixed(1)}%`}
                   </td>
                   <td className="px-4 sm:px-10 py-4 sm:py-8 text-right">
-                    <div className={cn("flex justify-end", row.isPositive ? "text-brand-success" : "text-brand-danger")}>
-                      {row.isPositive ? <CheckCircle2 size={24} /> : <AlertCircle size={24} />}
-                    </div>
+                    {row.prev > 0 && (
+                      <div className={cn("flex justify-end", row.isPositive ? "text-brand-success" : "text-brand-danger")}>
+                        {row.isPositive ? <TrendingDown size={24} /> : <TrendingUp size={24} />}
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}

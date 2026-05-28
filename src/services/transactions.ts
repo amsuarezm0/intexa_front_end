@@ -9,7 +9,7 @@ export interface Transaction {
   amount: number;
   status: 'Completado' | 'Pendiente' | 'Cancelado';
   reference?: string;
-  source: 'SIIGO' | 'Manual';
+  source: 'Siigo' | 'Manual';
   isProjection: boolean;
   createdAt: string;
   updatedAt: string;
@@ -37,18 +37,19 @@ export interface CreateTransactionInput {
   amount: number;
   status: 'Completado' | 'Pendiente' | 'Cancelado';
   reference?: string;
-  source: 'SIIGO' | 'Manual';
+  source: 'Siigo' | 'Manual';
   isProjection: boolean;
 }
 
 export const transactionsService = {
-  list: (params?: { page?: number; limit?: number; search?: string; type?: string; status?: string }) => {
+  list: (params?: { page?: number; limit?: number; search?: string; type?: string; status?: string; isProjection?: boolean }) => {
     const qs = new URLSearchParams();
     if (params?.page) qs.set('page', String(params.page));
     if (params?.limit) qs.set('limit', String(params.limit));
     if (params?.search) qs.set('search', params.search);
     if (params?.type) qs.set('type', params.type);
     if (params?.status) qs.set('status', params.status);
+    if (params?.isProjection !== undefined) qs.set('isProjection', String(params.isProjection));
     const query = qs.toString();
     return api.get<TransactionListResponse>(`/transactions${query ? `?${query}` : ''}`);
   },

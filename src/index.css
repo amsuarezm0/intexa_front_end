@@ -18,6 +18,15 @@
   body {
     @apply bg-brand-bg font-sans text-slate-900;
   }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled),
+  a[href],
+  label[for],
+  select,
+  summary {
+    cursor: pointer;
+  }
 }
 
 @layer components {

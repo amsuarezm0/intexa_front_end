@@ -3,15 +3,15 @@ import type { PieSlice } from './dashboard';
 
 export interface ReportDataPoint {
   name: string;
-  ejecutado: number;
-  presupuesto: number;
+  ingresos: number;
+  egresos: number;
 }
 
-export interface DeviationRow {
+export interface CategoryRow {
   category: string;
-  budget: number;
-  actual: number;
-  deviation: number;
+  amount: number;
+  prev: number;
+  change: number;
   isPositive: boolean;
 }
 
@@ -24,7 +24,7 @@ export interface AnnualProjection {
 export interface ReportSummary {
   cashFlowChart: ReportDataPoint[];
   categoryBreakdown: PieSlice[];
-  deviationTable: DeviationRow[];
+  categoryTable: CategoryRow[];
   annual: AnnualProjection;
   complianceRate: number;
 }

@@ -10,6 +10,7 @@ import { CreateMovementView } from './views/CreateMovementView';
 import { CreateProjectionView } from './views/CreateProjectionView';
 import { MainLayout } from './layouts/MainLayout';
 import { getToken, clearToken, getStoredUser, setStoredUser } from './lib/api';
+import { SettingsProvider } from './contexts/SettingsContext';
 
 type View = 'login' | 'dashboard' | 'cashflow' | 'projections' | 'movements' | 'reports' | 'settings' | 'create-movement' | 'create-projection';
 
@@ -20,7 +21,7 @@ export default function App() {
     getToken() ? 'dashboard' : 'login'
   );
   const [user, setUser] = useState<LoggedInUser | null>(() => getStoredUser());
-
+  const [refreshKey, setRefreshKey] = useState(0);
   useEffect(() => {
     if (!getToken() && currentView !== 'login') {
       setCurrentView('login');
@@ -48,11 +49,11 @@ export default function App() {
       case 'login':
         return <LoginView onLogin={handleLogin} />;
       case 'dashboard':
-        return <DashboardView onCreateMovement={() => handleNavigate('create-movement')} />;
+        return <DashboardView key={refreshKey} onCreateMovement={() => handleNavigate('create-movement')} user={user} />;
       case 'cashflow':
-        return <CashFlowView onCreateMovement={() => handleNavigate('create-movement')} />;
+        return <CashFlowView key={refreshKey} onCreateMovement={() => handleNavigate('create-movement')} onCreateProjection={handleCreateProjection} />;
       case 'movements':
-        return <MovementsView onCreateMovement={() => handleNavigate('create-movement')} />;
+        return <MovementsView key={refreshKey} onCreateMovement={() => handleNavigate('create-movement')} />;
       case 'create-movement':
         return <CreateMovementView
           onBack={() => handleNavigate('movements')}
@@ -67,7 +68,7 @@ export default function App() {
       case 'settings':
         return <SettingsView />;
       default:
-        return <DashboardView onCreateMovement={() => handleNavigate('create-movement')} />;
+        return <DashboardView onCreateMovement={() => handleNavigate('create-movement')} user={user} />;
     }
   };
 
@@ -76,13 +77,16 @@ export default function App() {
   }
 
   return (
-    <MainLayout
-      currentView={currentView}
-      onNavigate={handleNavigate as any}
-      onLogout={handleLogout}
-      user={user}
-    >
-      {renderView()}
-    </MainLayout>
+    <SettingsProvider userId={user?.id ?? null}>
+      <MainLayout
+        currentView={currentView}
+        onNavigate={handleNavigate as any}
+        onLogout={handleLogout}
+        onSyncSuccess={() => setRefreshKey(k => k + 1)}
+        user={user}
+      >
+        {renderView()}
+      </MainLayout>
+    </SettingsProvider>
   );
 }

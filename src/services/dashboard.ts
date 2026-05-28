@@ -2,7 +2,7 @@ import { api } from '../lib/api';
 
 export interface StatCard {
   title: string;
-  value: string;
+  value: number;
   change: string;
   isPositive: boolean;
   trendText: string;
@@ -39,12 +39,23 @@ export interface WeeklyComparison {
 export interface DashboardSummary {
   stats: StatCard[];
   netFlow: number;
+  monthIncome: number;
+  monthExpense: number;
   chartData: ChartDataPoint[];
   expensePie: PieSlice[];
   alerts: DashboardAlert[];
   weeklyData: WeeklyComparison[];
 }
 
+export interface BankBalance {
+  amount: number;
+  updatedAt: string;
+  updatedBy: string;
+}
+
 export const dashboardService = {
   getSummary: () => api.get<DashboardSummary>('/dashboard'),
+  getBankBalance: () => api.get<BankBalance>('/dashboard/bank-balance'),
+  updateBankBalance: (amount: number) =>
+    api.put<BankBalance>('/dashboard/bank-balance', { amount }),
 };

@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
+import ExcelJS from 'exceljs';
 import {
   Download, Filter, Plus, Search,
   Building2, TrendingUp, TrendingDown,
   ChevronLeft, ChevronRight, X,
-  ArrowUpRight, ArrowDownLeft
+  ArrowUpRight, ArrowDownLeft,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Skeleton, SkeletonCard } from '../components/Skeleton';
+import { TransactionDetailDrawer } from '../components/TransactionDetailDrawer';
 import { transactionsService, type Transaction, type TransactionSummary } from '../services';
 import { useSettings } from '../contexts/SettingsContext';
 import { cn } from '../lib/utils';
@@ -45,30 +47,57 @@ const STATUS_OPTIONS = ['Completado', 'Pendiente', 'Cancelado'] as const;
 type TypeFilter = '' | 'Ingreso' | 'Egreso';
 type StatusFilter = '' | 'Completado' | 'Pendiente' | 'Cancelado';
 
-function exportCSV(transactions: Transaction[], formatCurrency: (n: number) => string) {
-  const headers = ['Fecha', 'Descripción', 'Categoría', 'Tipo', 'Monto', 'Estado', 'Referencia'];
-  const rows = transactions.map(tx => [
-    tx.date,
-    `"${tx.description.replace(/"/g, '""')}"`,
-    tx.category,
-    tx.type,
-    tx.amount.toString(),
-    tx.status,
-    tx.reference ?? '',
-  ]);
-  const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+async function exportXLSX(transactions: Transaction[], formatCurrency: (n: number) => string) {
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('Movimientos');
+
+  ws.columns = [
+    { header: 'Fecha',       key: 'date',        width: 14 },
+    { header: 'Descripción', key: 'description', width: 40 },
+    { header: 'Categoría',   key: 'category',    width: 20 },
+    { header: 'Tipo',        key: 'type',        width: 12 },
+    { header: 'Monto',       key: 'amount',      width: 20 },
+    { header: 'Estado',      key: 'status',      width: 14 },
+    { header: 'Referencia',  key: 'reference',   width: 20 },
+    { header: 'Origen',      key: 'source',      width: 12 },
+  ];
+
+  const headerRow = ws.getRow(1);
+  headerRow.font = { bold: true };
+  headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+
+  transactions.forEach(tx => {
+    ws.addRow({
+      date: tx.date,
+      description: tx.description,
+      category: tx.category,
+      type: tx.type,
+      amount: formatCurrency(tx.amount),
+      status: tx.status,
+      reference: tx.reference ?? '',
+      source: tx.isProjection ? 'Proyección' : tx.source,
+    });
+  });
+
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `movimientos_${new Date().toISOString().split('T')[0]}.csv`;
+  a.download = `movimientos_${new Date().toISOString().split('T')[0]}.xlsx`;
   a.click();
   URL.revokeObjectURL(url);
 }
 
-export function MovementsView({ onCreateMovement }: { onCreateMovement?: () => void }) {
+export function MovementsView({
+  onCreateMovement,
+  initialSelectedId,
+}: {
+  onCreateMovement?: () => void;
+  initialSelectedId?: string;
+}) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [summary, setSummary] = useState<TransactionSummary | null>(null);
+  const [summary, setSummary] = useState<TransactionSummary>({ totalBalance: 0, monthlyIncome: 0, monthlyExpense: 0 });
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [page, setPage] = useState(1);
@@ -80,6 +109,8 @@ export function MovementsView({ onCreateMovement }: { onCreateMovement?: () => v
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState('');
+  const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false);
 
   const { formatCurrency } = useSettings();
 
@@ -94,7 +125,7 @@ export function MovementsView({ onCreateMovement }: { onCreateMovement?: () => v
       setTransactions(listRes.data);
       setTotal(listRes.total);
       setTotalPages(listRes.totalPages);
-      setSummary(summaryRes);
+      setSummary(prev => ({ ...prev, ...(summaryRes ?? {}) }));
     } catch {
       setError('No se pudo cargar los movimientos.');
     } finally {
@@ -109,6 +140,15 @@ export function MovementsView({ onCreateMovement }: { onCreateMovement?: () => v
     return () => clearTimeout(t);
   }, [searchInput]);
 
+  useEffect(() => {
+    if (!initialSelectedId) return;
+    setIsLoadingDetail(true);
+    transactionsService.get(initialSelectedId)
+      .then(setSelectedTx)
+      .catch(() => {})
+      .finally(() => setIsLoadingDetail(false));
+  }, [initialSelectedId]);
+
   const handleExport = async () => {
     setIsExporting(true);
     try {
@@ -118,7 +158,7 @@ export function MovementsView({ onCreateMovement }: { onCreateMovement?: () => v
         type: typeFilter || undefined,
         status: statusFilter || undefined,
       });
-      exportCSV(res.data, formatCurrency);
+      await exportXLSX(res.data, formatCurrency);
     } catch {
       // silently fail — user can retry
     } finally {
@@ -135,7 +175,7 @@ export function MovementsView({ onCreateMovement }: { onCreateMovement?: () => v
   };
 
   if (error) return <div className="p-8 text-brand-danger font-semibold">{error}</div>;
-  if (isLoading && !summary) {
+  if (isLoading) {
     return (
       <div className="space-y-8">
         <div className="flex justify-between items-end">
@@ -149,8 +189,18 @@ export function MovementsView({ onCreateMovement }: { onCreateMovement?: () => v
   }
 
   const fmt = (n: number) => formatCurrency(Math.abs(n));
+  const balancePositive = summary.totalBalance >= 0;
 
   return (
+    <>
+    <TransactionDetailDrawer
+      transaction={selectedTx}
+      isLoading={isLoadingDetail}
+      onClose={() => setSelectedTx(null)}
+      onDeleted={() => { setSelectedTx(null); fetchData(); }}
+      onUpdated={tx => { setSelectedTx(tx); fetchData(); }}
+    />
+
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
         <div className="space-y-1">
@@ -186,25 +236,42 @@ export function MovementsView({ onCreateMovement }: { onCreateMovement?: () => v
         </div>
       </div>
 
-      {summary && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[
-            { title: 'BALANCE TOTAL', value: fmt(summary.totalBalance), Icon: Building2, color: 'brand-primary' },
-            { title: 'INGRESOS MES', value: `+${fmt(summary.monthlyIncome)}`, Icon: TrendingUp, color: 'brand-success' },
-            { title: 'EGRESOS MES', value: `-${fmt(summary.monthlyExpense)}`, Icon: TrendingDown, color: 'brand-danger' },
-          ].map((stat, i) => (
-            <div key={i} className="bg-white p-6 rounded-[32px] border border-slate-100 card-shadow flex justify-between items-center cursor-default">
-              <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{stat.title}</p>
-                <p className={cn("text-2xl font-bold", i === 1 ? "text-brand-success" : i === 2 ? "text-brand-danger" : "text-slate-900")}>{stat.value}</p>
-              </div>
-              <div className={cn("p-4 rounded-[20px]", i === 0 ? "bg-slate-100 text-brand-primary" : i === 1 ? "bg-brand-success/10 text-brand-success" : "bg-brand-danger/10 text-brand-danger")}>
-                <stat.Icon size={24} />
-              </div>
-            </div>
-          ))}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Balance Total */}
+        <div className={cn("bg-white p-6 rounded-[32px] border card-shadow flex justify-between items-center cursor-default", balancePositive ? "border-slate-100" : "border-brand-danger/20")}>
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">BALANCE TOTAL</p>
+            <p className="text-2xl font-bold text-slate-900">
+              {balancePositive ? '' : '-'}{fmt(summary.totalBalance)}
+            </p>
+          </div>
+          <div className={cn("p-4 rounded-[20px]", balancePositive ? "bg-slate-100 text-brand-primary" : "bg-brand-danger/10 text-brand-danger")}>
+            <Building2 size={24} />
+          </div>
         </div>
-      )}
+
+        {/* Ingresos Mes */}
+        <div className="bg-white p-6 rounded-[32px] border border-slate-100 card-shadow flex justify-between items-center cursor-default">
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">INGRESOS MES</p>
+            <p className="text-2xl font-bold text-brand-success">+{fmt(summary.monthlyIncome)}</p>
+          </div>
+          <div className="p-4 rounded-[20px] bg-brand-success/10 text-brand-success">
+            <TrendingUp size={24} />
+          </div>
+        </div>
+
+        {/* Egresos Mes */}
+        <div className="bg-white p-6 rounded-[32px] border border-slate-100 card-shadow flex justify-between items-center cursor-default">
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">EGRESOS MES</p>
+            <p className="text-2xl font-bold text-brand-danger">-{fmt(summary.monthlyExpense)}</p>
+          </div>
+          <div className="p-4 rounded-[20px] bg-brand-danger/10 text-brand-danger">
+            <TrendingDown size={24} />
+          </div>
+        </div>
+      </div>
 
       <div className="bg-white rounded-3xl sm:rounded-[40px] border border-slate-100 card-shadow overflow-hidden">
         {/* Search + action row */}
@@ -339,7 +406,7 @@ export function MovementsView({ onCreateMovement }: { onCreateMovement?: () => v
                     </tr>
                   )
                 : transactions.map(tx => (
-                  <tr key={tx.id} className="hover:bg-slate-50 transition-colors group cursor-pointer">
+                  <tr key={tx.id} onClick={() => setSelectedTx(tx)} className="hover:bg-slate-50 transition-colors group cursor-pointer">
                     <td className="px-3 sm:px-8 py-3 sm:py-6 text-sm font-semibold text-slate-500 whitespace-nowrap">{tx.date}</td>
                     <td className="px-3 sm:px-8 py-3 sm:py-6">
                       <p className="text-sm font-bold text-slate-900 line-clamp-1">{tx.description}</p>
@@ -390,5 +457,6 @@ export function MovementsView({ onCreateMovement }: { onCreateMovement?: () => v
         </div>
       </div>
     </motion.div>
+    </>
   );
 }

@@ -198,9 +198,9 @@ export function ProjectionsView({ onCreateProjection, user }: { onCreateProjecti
                   <Icon size={22} />
                 </div>
                 <div className="flex-1 space-y-1">
-                  <div className="flex justify-between items-start">
-                    <h4 className="font-bold text-slate-900">{alert.title}</h4>
-                    <span className={cn("text-[10px] font-black uppercase tracking-widest",
+                  <div className="flex justify-between items-start gap-2">
+                    <h4 className="font-bold text-slate-900 leading-snug">{alert.title}</h4>
+                    <span className={cn("text-[10px] font-black uppercase tracking-widest shrink-0",
                       alert.color === 'brand-danger' ? "text-brand-danger" : alert.color === 'brand-success' ? "text-brand-success" : "text-brand-danger"
                     )}>{alert.dueDate}</span>
                   </div>

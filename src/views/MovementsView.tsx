@@ -9,39 +9,13 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { Skeleton, SkeletonCard } from '../components/Skeleton';
 import { TransactionDetailDrawer } from '../components/TransactionDetailDrawer';
+import { StatusBadge } from '../components/StatusBadge';
+import { CategoryBadge } from '../components/CategoryBadge';
 import { transactionsService, type Transaction, type TransactionSummary } from '../services';
 import { useSettings } from '../contexts/SettingsContext';
 import { cn } from '../lib/utils';
 
 const TYPE_OPTIONS = ['Ingreso', 'Egreso'] as const;
-
-const CATEGORY_COLORS: Record<string, string> = {
-  'Tecnología':    'bg-blue-100 text-blue-700',
-  'Ventas':        'bg-emerald-100 text-emerald-700',
-  'Personal':      'bg-violet-100 text-violet-700',
-  'Finanzas':      'bg-amber-100 text-amber-700',
-  'Marketing':     'bg-pink-100 text-pink-700',
-  'Operaciones':   'bg-orange-100 text-orange-700',
-  'Legal':         'bg-red-100 text-red-700',
-  'Administración':'bg-teal-100 text-teal-700',
-};
-
-const FALLBACK_COLORS = [
-  'bg-blue-100 text-blue-700',
-  'bg-emerald-100 text-emerald-700',
-  'bg-violet-100 text-violet-700',
-  'bg-amber-100 text-amber-700',
-  'bg-pink-100 text-pink-700',
-  'bg-orange-100 text-orange-700',
-  'bg-teal-100 text-teal-700',
-  'bg-cyan-100 text-cyan-700',
-];
-
-function getCategoryColor(category: string): string {
-  if (CATEGORY_COLORS[category]) return CATEGORY_COLORS[category];
-  const hash = category.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  return FALLBACK_COLORS[hash % FALLBACK_COLORS.length];
-}
 const STATUS_OPTIONS = ['Completado', 'Pendiente', 'Cancelado'] as const;
 
 type TypeFilter = '' | 'Ingreso' | 'Egreso';
@@ -408,12 +382,12 @@ export function MovementsView({
                 : transactions.map(tx => (
                   <tr key={tx.id} onClick={() => setSelectedTx(tx)} className="hover:bg-slate-50 transition-colors group cursor-pointer">
                     <td className="px-3 sm:px-8 py-3 sm:py-6 text-sm font-semibold text-slate-500 whitespace-nowrap">{tx.date}</td>
-                    <td className="px-3 sm:px-8 py-3 sm:py-6">
-                      <p className="text-sm font-bold text-slate-900 line-clamp-1">{tx.description}</p>
-                      {tx.reference && <p className="text-[10px] font-bold text-slate-400 mt-0.5">{tx.reference}</p>}
+                    <td className="px-3 sm:px-8 py-3 sm:py-6 max-w-xs">
+                      <p className="text-sm font-bold text-slate-900">{tx.description}</p>
+                      {tx.detail && <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-2 leading-snug">{tx.detail}</p>}
                     </td>
                     <td className="hidden sm:table-cell px-3 sm:px-8 py-3 sm:py-6">
-                      <span className={cn("text-xs font-bold px-3 py-1 rounded-lg", getCategoryColor(tx.category))}>{tx.category}</span>
+                      <CategoryBadge category={tx.category} />
                     </td>
                     <td className="px-3 sm:px-8 py-3 sm:py-6">
                       <div className={cn("flex items-center justify-center gap-1 text-[11px] font-bold uppercase tracking-wider", tx.type === 'Ingreso' ? "text-brand-success" : "text-brand-danger")}>
@@ -425,12 +399,7 @@ export function MovementsView({
                       <span className="text-sm font-extrabold text-slate-900">{formatCurrency(tx.amount)}</span>
                     </td>
                     <td className="px-3 sm:px-8 py-3 sm:py-6 text-right">
-                      <span className={cn(
-                        "text-[10px] font-black px-2.5 py-1.5 rounded-lg uppercase tracking-widest border",
-                        tx.status === 'Completado' ? "bg-brand-success/10 text-brand-success border-brand-success/20" :
-                        tx.status === 'Pendiente' ? "bg-brand-primary/10 text-brand-primary border-brand-primary/20" :
-                        "bg-brand-danger/10 text-brand-danger border-brand-danger/20"
-                      )}>{tx.status}</span>
+                      <StatusBadge status={tx.status} />
                     </td>
                   </tr>
                 ))

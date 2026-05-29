@@ -9,6 +9,7 @@ export interface Transaction {
   amount: number;
   status: 'Completado' | 'Pendiente' | 'Cancelado';
   reference?: string;
+  detail?: string;
   source: 'Siigo' | 'Manual';
   isProjection: boolean;
   createdAt: string;

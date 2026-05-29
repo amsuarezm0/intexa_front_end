@@ -4,34 +4,8 @@ import { X, ArrowUpRight, ArrowDownLeft, Calendar, Tag, Hash, Database, Trash2, 
 import { type Transaction, transactionsService, categoriesService, type Category } from '../services';
 import { useSettings } from '../contexts/SettingsContext';
 import { cn } from '../lib/utils';
-
-const CATEGORY_COLORS: Record<string, string> = {
-  'Tecnología':    'bg-blue-100 text-blue-700',
-  'Ventas':        'bg-emerald-100 text-emerald-700',
-  'Personal':      'bg-violet-100 text-violet-700',
-  'Finanzas':      'bg-amber-100 text-amber-700',
-  'Marketing':     'bg-pink-100 text-pink-700',
-  'Operaciones':   'bg-orange-100 text-orange-700',
-  'Legal':         'bg-red-100 text-red-700',
-  'Administración':'bg-teal-100 text-teal-700',
-};
-
-const FALLBACK_COLORS = [
-  'bg-blue-100 text-blue-700',
-  'bg-emerald-100 text-emerald-700',
-  'bg-violet-100 text-violet-700',
-  'bg-amber-100 text-amber-700',
-  'bg-pink-100 text-pink-700',
-  'bg-orange-100 text-orange-700',
-  'bg-teal-100 text-teal-700',
-  'bg-cyan-100 text-cyan-700',
-];
-
-function getCategoryColor(category: string): string {
-  if (CATEGORY_COLORS[category]) return CATEGORY_COLORS[category];
-  const hash = category.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  return FALLBACK_COLORS[hash % FALLBACK_COLORS.length];
-}
+import { StatusBadge } from './StatusBadge';
+import { CategoryBadge } from './CategoryBadge';
 
 interface Props {
   transaction: Transaction | null;
@@ -273,6 +247,9 @@ export function TransactionDetailDrawer({ transaction, isLoading, onClose, onDel
                       <div>
                         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Descripción</p>
                         <p className="text-base font-semibold text-slate-900">{transaction.description}</p>
+                        {transaction.detail && (
+                          <p className="text-sm text-slate-500 mt-1 leading-snug">{transaction.detail}</p>
+                        )}
                       </div>
 
                       <div className="grid grid-cols-2 gap-4">
@@ -289,9 +266,7 @@ export function TransactionDetailDrawer({ transaction, isLoading, onClose, onDel
                             <Tag size={14} className="text-slate-400" />
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Categoría</p>
                           </div>
-                          <span className={cn("text-xs font-bold px-2 py-0.5 rounded-lg", getCategoryColor(transaction.category))}>
-                            {transaction.category}
-                          </span>
+                          <CategoryBadge category={transaction.category} className="px-2 py-0.5" />
                         </div>
 
                         <div className="bg-slate-50 p-4 rounded-2xl">
@@ -315,12 +290,7 @@ export function TransactionDetailDrawer({ transaction, isLoading, onClose, onDel
 
                       <div>
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Estado</p>
-                        <span className={cn(
-                          "text-xs font-black px-3 py-1.5 rounded-xl uppercase tracking-widest border",
-                          transaction.status === 'Completado' ? "bg-brand-success/10 text-brand-success border-brand-success/20" :
-                          transaction.status === 'Pendiente'  ? "bg-brand-primary/10 text-brand-primary border-brand-primary/20" :
-                          "bg-brand-danger/10 text-brand-danger border-brand-danger/20"
-                        )}>{transaction.status}</span>
+                        <StatusBadge status={transaction.status} className="text-xs px-3 rounded-xl" />
                       </div>
                     </>
                   )}

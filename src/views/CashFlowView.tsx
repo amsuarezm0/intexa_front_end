@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Plus, TrendingUp, AlertTriangle, ArrowDownCi
 import { motion } from 'motion/react';
 import { Skeleton, SkeletonCard } from '../components/Skeleton';
 import { TransactionDetailDrawer } from '../components/TransactionDetailDrawer';
+import { StatusBadge } from '../components/StatusBadge';
 import { cashFlowService, transactionsService, type CashFlowSummary, type Transaction } from '../services';
 import { useSettings } from '../contexts/SettingsContext';
 import { cn } from '../lib/utils';
@@ -556,12 +557,7 @@ export function CashFlowView({ onCreateMovement, onCreateProjection }: { onCreat
                     <span className="text-sm font-extrabold text-slate-900">{formatCurrency(tx.amount)}</span>
                   </td>
                   <td className="px-3 sm:px-8 py-3 sm:py-6 text-right">
-                    <span className={cn(
-                      "text-[10px] font-black px-2.5 py-1.5 rounded-lg uppercase tracking-widest border",
-                      tx.status === 'Completado' ? "bg-brand-success/10 text-brand-success border-brand-success/20" :
-                      tx.status === 'Pendiente'  ? "bg-brand-primary/10 text-brand-primary border-brand-primary/20" :
-                      "bg-brand-danger/10 text-brand-danger border-brand-danger/20"
-                    )}>{tx.status}</span>
+                    <StatusBadge status={tx.status} />
                   </td>
                   <td className="hidden sm:table-cell px-3 sm:px-8 py-3 sm:py-6">
                     {tx.isProjection ? (

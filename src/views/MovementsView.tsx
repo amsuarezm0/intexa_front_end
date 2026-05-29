@@ -22,10 +22,10 @@ import { cn } from '../lib/utils';
 import { transactionsService,type Transaction,type TransactionSummary } from '../services';
 
 const TYPE_OPTIONS = ['Ingreso', 'Egreso'] as const;
-const STATUS_OPTIONS = ['Completado', 'Pendiente', 'Cancelado'] as const;
+const STATUS_OPTIONS = ['Completado', 'Parcial', 'Pendiente', 'Cancelado'] as const;
 
 type TypeFilter = '' | 'Ingreso' | 'Egreso';
-type StatusFilter = '' | 'Completado' | 'Pendiente' | 'Cancelado';
+type StatusFilter = '' | 'Completado' | 'Parcial' | 'Pendiente' | 'Cancelado';
 
 async function exportXLSX(transactions: Transaction[], formatCurrency: (n: number) => string) {
   const wb = new ExcelJS.Workbook();
@@ -320,6 +320,7 @@ export function MovementsView({
                           "px-3 py-1.5 rounded-lg text-xs font-bold border transition-all",
                           statusFilter === s
                             ? s === 'Completado' ? "bg-brand-success text-white border-brand-success"
+                              : s === 'Parcial'   ? "bg-brand-warning text-white border-brand-warning"
                               : s === 'Pendiente' ? "bg-brand-primary text-white border-brand-primary"
                               : "bg-brand-danger text-white border-brand-danger"
                             : "bg-slate-50 text-slate-500 border-slate-200 hover:border-slate-300"
@@ -358,6 +359,7 @@ export function MovementsView({
               <span className={cn(
                 "flex items-center gap-1.5 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest",
                 statusFilter === 'Completado' ? "bg-brand-success/10 text-brand-success"
+                  : statusFilter === 'Parcial'   ? "bg-brand-warning/10 text-brand-warning"
                   : statusFilter === 'Pendiente' ? "bg-brand-primary/10 text-brand-primary"
                   : "bg-brand-danger/10 text-brand-danger"
               )}>
@@ -408,6 +410,11 @@ export function MovementsView({
                     </td>
                     <td className="px-3 sm:px-8 py-3 sm:py-6 text-right">
                       <span className="text-sm font-extrabold text-slate-900">{formatCurrency(tx.amount)}</span>
+                      {!!tx.balance && tx.balance > 0 && (
+                        <p className="text-[10px] font-bold text-brand-warning mt-0.5" title={`Saldo pendiente: ${formatCurrency(tx.balance)}`}>
+                          {formatCompact(tx.balance)} pend.
+                        </p>
+                      )}
                     </td>
                     <td className="px-3 sm:px-8 py-3 sm:py-6 text-right">
                       <StatusBadge status={tx.status} />

@@ -1,4 +1,4 @@
-import { ArrowDownLeft,ArrowUpRight,Calendar,Check,Database,Hash,Pencil,Tag,Trash2,X } from 'lucide-react';
+import { ArrowDownLeft,ArrowUpRight,Calendar,Check,Database,Hash,Pencil,Tag,Trash2,Wallet,X } from 'lucide-react';
 import { AnimatePresence,motion } from 'motion/react';
 import { useEffect,useState } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
@@ -288,6 +288,35 @@ export function TransactionDetailDrawer({ transaction, isLoading, onClose, onDel
                           </div>
                         )}
                       </div>
+
+                      {transaction.balance != null && transaction.balance > 0 && (
+                        <div className="bg-brand-warning/5 border border-brand-warning/20 rounded-2xl p-4 space-y-3">
+                          <div className="flex items-center gap-2">
+                            <Wallet size={14} className="text-brand-warning" />
+                            <p className="text-[10px] font-black text-brand-warning uppercase tracking-widest">Pago parcial</p>
+                          </div>
+                          <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                            <div
+                              className="h-2 rounded-full bg-brand-warning transition-all"
+                              style={{ width: `${Math.round(((transaction.amount - transaction.balance) / transaction.amount) * 100)}%` }}
+                            />
+                          </div>
+                          <div className="grid grid-cols-3 text-center gap-2">
+                            <div>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pagado</p>
+                              <p className="text-sm font-extrabold text-brand-success">{formatCurrency(transaction.amount - transaction.balance)}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pendiente</p>
+                              <p className="text-sm font-extrabold text-brand-warning">{formatCurrency(transaction.balance)}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total</p>
+                              <p className="text-sm font-extrabold text-slate-900">{formatCurrency(transaction.amount)}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                       <div>
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Estado</p>

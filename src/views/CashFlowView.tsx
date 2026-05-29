@@ -203,15 +203,25 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
   const projectedBalance = useMemo(() => {
     const horizon = new Date();
     horizon.setDate(horizon.getDate() + 30);
+
+    // Cash received to date (Completado: full amount; Parcial: amount − balance)
     const balance = allTxs
       .filter(t => !t.isProjection && t.status !== 'Cancelado')
-      .reduce((sum, t) => sum + (t.type === 'Ingreso' ? t.amount : -t.amount), 0);
+      .reduce((sum, t) => {
+        const r = t.status === 'Completado' ? t.amount
+                : t.status === 'Parcial'    ? t.amount - (t.balance ?? 0)
+                : 0;
+        return sum + (t.type === 'Ingreso' ? r : -r);
+      }, 0);
+
+    // Expected flows within 30 days: Pendiente = full amount; Parcial = remaining balance
     const pendingInc = allTxs
-      .filter(t => !t.isProjection && t.status === 'Pendiente' && t.type === 'Ingreso' && parseTxDate(t.date) <= horizon)
-      .reduce((sum, t) => sum + t.amount, 0);
+      .filter(t => !t.isProjection && (t.status === 'Pendiente' || t.status === 'Parcial') && t.type === 'Ingreso' && parseTxDate(t.date) <= horizon)
+      .reduce((sum, t) => sum + (t.status === 'Parcial' ? (t.balance ?? 0) : t.amount), 0);
     const pendingExp = allTxs
-      .filter(t => !t.isProjection && t.status === 'Pendiente' && t.type === 'Egreso' && parseTxDate(t.date) <= horizon)
-      .reduce((sum, t) => sum + t.amount, 0);
+      .filter(t => !t.isProjection && (t.status === 'Pendiente' || t.status === 'Parcial') && t.type === 'Egreso' && parseTxDate(t.date) <= horizon)
+      .reduce((sum, t) => sum + (t.status === 'Parcial' ? (t.balance ?? 0) : t.amount), 0);
+
     return balance + pendingInc - pendingExp;
   }, [allTxs]);
 

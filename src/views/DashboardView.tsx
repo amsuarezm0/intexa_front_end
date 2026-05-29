@@ -1,43 +1,44 @@
-import { useState, useEffect } from 'react';
 import {
-  Building2,
-  ArrowDownCircle,
-  ArrowUpCircle,
-  TrendingUp,
-  Calendar,
-  Plus,
-  AlertCircle,
-  Clock,
-  Sparkles,
-  ChevronRight,
-  MoreHorizontal,
-  Pencil,
-  Check,
-  X,
-  Landmark,
+AlertCircle,
+ArrowDownCircle,
+ArrowUpCircle,
+Building2,
+Calendar,
+Check,
+ChevronRight,
+Clock,
+Landmark,
+MoreHorizontal,
+Pencil,
+Plus,
+Sparkles,
+TrendingUp,
+X,
 } from 'lucide-react';
+import { AnimatePresence,motion } from 'motion/react';
+import { useEffect,useState } from 'react';
 import {
-  ResponsiveContainer,
-  ComposedChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Cell,
-  PieChart,
-  Pie
+Bar,
+CartesianGrid,
+Cell,
+ComposedChart,
+Pie,
+PieChart,
+ResponsiveContainer,
+Tooltip,
+XAxis,
+YAxis,
 } from 'recharts';
-import { motion, AnimatePresence } from 'motion/react';
-import { Skeleton, SkeletonCard, SkeletonChart } from '../components/Skeleton';
-import { TransactionDetailDrawer } from '../components/TransactionDetailDrawer';
-import { BankSaldoModal } from '../components/BankSaldoModal';
-import { dashboardService, transactionsService, type DashboardSummary, type BankBalance } from '../services';
-import type { Transaction } from '../services';
-import { useSettings } from '../contexts/SettingsContext';
-import { cn } from '../lib/utils';
-import { PIE_COLORS } from '../lib/colors';
 import type { LoggedInUser } from '../App';
+import { BankSaldoModal } from '../components/BankSaldoModal';
+import { Skeleton,SkeletonCard,SkeletonChart } from '../components/Skeleton';
+import { TransactionDetailDrawer } from '../components/TransactionDetailDrawer';
+import { useSettings } from '../contexts/SettingsContext';
+import { PIE_COLORS } from '../lib/colors';
+import { canWrite,isTreasury } from '../lib/roles';
+import { cn } from '../lib/utils';
+import type { Transaction } from '../services';
+import { dashboardService,transactionsService,type BankBalance,type DashboardSummary } from '../services';
 
 const SALDO_UPDATED_KEY = 'arca_saldo_updated_date';
 
@@ -83,7 +84,7 @@ export function DashboardView({
   const [saldoSaving, setSaldoSaving] = useState(false);
   const { formatCurrency, formatCompact } = useSettings();
 
-  const isTesorero = user?.role?.toLowerCase() === 'tesorero';
+  const isTesorero = isTreasury(user?.role);
 
   useEffect(() => {
     dashboardService.getSummary()
@@ -214,13 +215,15 @@ export function DashboardView({
               <Calendar size={18} className="text-slate-500" />
               <span className="text-sm font-semibold text-slate-700">Últimos 30 días</span>
             </div>
-            <button
-              onClick={onCreateMovement}
-              className="flex items-center gap-2 bg-brand-dark text-white px-6 py-3 rounded-xl font-bold hover:bg-brand-accent transition-all active:scale-[0.98] shadow-lg shadow-brand-dark/20"
-            >
-              <Plus size={20} />
-              <span>Nuevo Registro</span>
-            </button>
+            {canWrite(user?.role) && (
+              <button
+                onClick={onCreateMovement}
+                className="flex items-center gap-2 bg-brand-dark text-white px-6 py-3 rounded-xl font-bold hover:bg-brand-accent transition-all active:scale-[0.98] shadow-lg shadow-brand-dark/20"
+              >
+                <Plus size={20} />
+                <span>Nuevo Registro</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -250,8 +253,8 @@ export function DashboardView({
                       />
                     </div>
                   ) : (
-                    <p className="text-2xl font-bold text-slate-900">
-                      {bankBalance ? formatCurrency(bankBalance.amount) : '—'}
+                    <p className="text-2xl font-bold text-slate-900" title={bankBalance ? formatCurrency(bankBalance.amount) : undefined}>
+                      {bankBalance ? formatCompact(bankBalance.amount) : '—'}
                     </p>
                   )}
                 </div>
@@ -292,7 +295,7 @@ export function DashboardView({
               <div className="flex justify-between items-start mb-4">
                 <div className="space-y-1">
                   <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{data.stats[1]?.title ?? '—'}</p>
-                  <p className="text-2xl font-bold text-slate-900">{data.stats[1] != null ? formatCurrency(data.stats[1].value) : '—'}</p>
+                  <p className="text-2xl font-bold text-slate-900" title={data.stats[1] != null ? formatCurrency(data.stats[1].value) : undefined}>{data.stats[1] != null ? formatCompact(data.stats[1].value) : '—'}</p>
                 </div>
                 <div className="p-2.5 rounded-xl bg-brand-success/10 text-brand-success group-hover:scale-110 transition-transform">
                   <ArrowDownCircle size={24} />
@@ -313,7 +316,7 @@ export function DashboardView({
               <div className="flex justify-between items-start mb-4">
                 <div className="space-y-1">
                   <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{data.stats[0]?.title ?? '—'}</p>
-                  <p className="text-2xl font-bold text-slate-900">{data.stats[0] != null ? formatCurrency(data.stats[0].value) : '—'}</p>
+                  <p className="text-2xl font-bold text-slate-900" title={data.stats[0] != null ? formatCurrency(data.stats[0].value) : undefined}>{data.stats[0] != null ? formatCompact(data.stats[0].value) : '—'}</p>
                 </div>
                 <div className="p-2.5 rounded-xl bg-slate-100 text-brand-primary group-hover:scale-110 transition-transform">
                   <Building2 size={24} />
@@ -331,7 +334,7 @@ export function DashboardView({
               <div className="flex justify-between items-start mb-4">
                 <div className="space-y-1">
                   <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{data.stats[2]?.title ?? '—'}</p>
-                  <p className="text-2xl font-bold text-slate-900">{data.stats[2] != null ? formatCurrency(data.stats[2].value) : '—'}</p>
+                  <p className="text-2xl font-bold text-slate-900" title={data.stats[2] != null ? formatCurrency(data.stats[2].value) : undefined}>{data.stats[2] != null ? formatCompact(data.stats[2].value) : '—'}</p>
                 </div>
                 <div className="p-2.5 rounded-xl bg-brand-danger/10 text-brand-danger group-hover:scale-110 transition-transform">
                   <ArrowUpCircle size={24} />
@@ -352,7 +355,7 @@ export function DashboardView({
               <div className="flex justify-between items-start">
                 <div>
                   <p className="text-[11px] font-bold opacity-70 uppercase tracking-widest">FLUJO NETO</p>
-                  <p className="text-2xl font-bold mt-1 break-words">{formatCurrency(data.netFlow)}</p>
+                  <p className="text-2xl font-bold mt-1 break-words" title={formatCurrency(data.netFlow)}>{formatCompact(data.netFlow)}</p>
                 </div>
                 <div className="bg-white/20 p-2.5 rounded-xl shrink-0 ml-2">
                   <TrendingUp size={24} />
@@ -405,10 +408,10 @@ export function DashboardView({
             </div>
             <div className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={data.chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }} barGap={4} barCategoryGap="30%">
+                <ComposedChart data={data.chartData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }} barGap={4} barCategoryGap="30%">
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 700 }} dy={10} />
-                  <YAxis hide />
+                  <YAxis hide width={0} />
                   <Tooltip
                     cursor={{ fill: '#F8FAFC' }}
                     contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', padding: '12px 16px' }}
@@ -430,32 +433,34 @@ export function DashboardView({
               <h3 className="text-xl font-bold text-slate-900 tracking-tight">Distribución de Gastos</h3>
               <p className="text-sm text-slate-400 font-medium">Por categorías principales este mes</p>
             </div>
-            <div className="flex-1 min-h-[250px] relative">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={data.expensePie} cx="50%" cy="50%" innerRadius={80} outerRadius={105} paddingAngle={8} dataKey="value">
-                    {data.expensePie.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">TOTAL</span>
-                <span className="text-3xl font-bold text-slate-900 tracking-tight">{data.stats[2] != null ? formatCurrency(data.stats[2].value) : formatCurrency(0)}</span>
-              </div>
-            </div>
-            <div className="mt-8 space-y-4">
-              {data.expensePie.map((entry, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: PIE_COLORS[index] }} />
-                    <span className="text-sm font-semibold text-slate-600">{entry.name}</span>
-                  </div>
-                  <span className="text-sm font-bold text-slate-900">{entry.value}%</span>
+            <div className="flex-1 flex flex-col items-center justify-center gap-8">
+              <div className="w-full h-[250px] relative">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={data.expensePie} cx="50%" cy="50%" innerRadius={80} outerRadius={105} paddingAngle={8} dataKey="value">
+                      {data.expensePie.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">TOTAL</span>
+                  <span className="text-3xl font-bold text-slate-900 tracking-tight pointer-events-auto" title={data.stats[2] != null ? formatCurrency(data.stats[2].value) : undefined}>{data.stats[2] != null ? formatCompact(data.stats[2].value) : formatCompact(0)}</span>
                 </div>
-              ))}
+              </div>
+              <div className="w-full space-y-4">
+                {data.expensePie.map((entry, index) => (
+                  <div key={index} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: PIE_COLORS[index] }} />
+                      <span className="text-sm font-semibold text-slate-600">{entry.name}</span>
+                    </div>
+                    <span className="text-sm font-bold text-slate-900">{entry.value}%</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -470,25 +475,56 @@ export function DashboardView({
               </span>
             </div>
             <div className="space-y-4">
-              {data.alerts.map((alert) => (
-                <div key={alert.id} onClick={() => handleAlertClick(alert.id)} className={cn(
-                  "p-4 sm:p-6 rounded-2xl sm:rounded-3xl border hover:opacity-90 transition-all cursor-pointer group",
-                  alert.type === 'danger' ? "bg-brand-danger/5 border-brand-danger/10 hover:bg-brand-danger/[0.08]" : "bg-slate-50 border-slate-100 hover:bg-white hover:shadow-lg"
-                )}>
-                  <div className="flex gap-4">
-                    <div className={cn("p-3 rounded-2xl h-fit", alert.type === 'danger' ? "bg-brand-danger/20" : "bg-slate-200 text-slate-600")}>
-                      {alert.type === 'danger' ? <AlertCircle size={24} className="text-brand-danger" /> : <Clock size={24} />}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex justify-between">
-                        <h4 className={cn("font-bold text-slate-900", alert.type === 'danger' && "group-hover:text-brand-danger transition-colors")}>{alert.title}</h4>
-                        <ChevronRight size={18} className="text-slate-300 group-hover:translate-x-1 transition-transform" />
+              {data.alerts.map((alert) => {
+                const isSynthetic = alert.id === 'balance-warning';
+                return (
+                  <div
+                    key={alert.id}
+                    onClick={isSynthetic ? undefined : () => handleAlertClick(alert.id)}
+                    className={cn(
+                      "p-4 sm:p-6 rounded-2xl sm:rounded-3xl border transition-all group",
+                      isSynthetic
+                        ? "bg-amber-50 border-amber-200 cursor-default"
+                        : alert.type === 'danger'
+                          ? "bg-brand-danger/5 border-brand-danger/10 hover:bg-brand-danger/[0.08] hover:opacity-90 cursor-pointer"
+                          : "bg-slate-50 border-slate-100 hover:bg-white hover:shadow-lg cursor-pointer"
+                    )}
+                  >
+                    <div className="flex gap-4">
+                      <div className={cn("p-3 rounded-2xl h-fit",
+                        isSynthetic ? "bg-amber-100 text-amber-600" :
+                        alert.type === 'danger' ? "bg-brand-danger/20" : "bg-slate-200 text-slate-600"
+                      )}>
+                        {isSynthetic
+                          ? <AlertCircle size={24} className="text-amber-600" />
+                          : alert.type === 'danger'
+                            ? <AlertCircle size={24} className="text-brand-danger" />
+                            : <Clock size={24} />}
                       </div>
-                      <p className="text-sm text-slate-500 mt-1 leading-relaxed font-medium">{alert.description}</p>
+                      <div className="flex-1">
+                        <div className="flex justify-between">
+                          <h4 className={cn("font-bold",
+                            isSynthetic ? "text-amber-700" :
+                            alert.type === 'danger' ? "text-slate-900 group-hover:text-brand-danger transition-colors" : "text-slate-900"
+                          )}>{alert.title}</h4>
+                          {!isSynthetic && <ChevronRight size={18} className="text-slate-300 group-hover:translate-x-1 transition-transform" />}
+                        </div>
+                        <p className="text-sm text-slate-500 mt-1 leading-relaxed font-medium">
+                          {alert.description}
+                          {alert.amount > 0 && (
+                            <span className={cn("ml-1 font-bold",
+                              isSynthetic ? "text-amber-600" :
+                              alert.type === 'danger' ? "text-brand-danger" : "text-slate-700"
+                            )} title={formatCurrency(alert.amount)}>
+                              {formatCompact(alert.amount)}
+                            </span>
+                          )}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             <div className="bg-brand-success/5 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-brand-success/10 flex gap-4">
               <Sparkles className="text-brand-success shrink-0" size={24} />
@@ -511,7 +547,7 @@ export function DashboardView({
                   <div key={week.week} className="space-y-3">
                     <div className="flex justify-between text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                       <span>SEMANA {week.week}</span>
-                      <span className="text-slate-900">{formatCompact(week.ingresos)} / {formatCompact(week.egresos)}</span>
+                      <span className="text-slate-900" title={`${formatCurrency(week.ingresos)} / ${formatCurrency(week.egresos)}`}>{formatCompact(week.ingresos)} / {formatCompact(week.egresos)}</span>
                     </div>
                     <div className="h-4 w-full bg-slate-100 rounded-full overflow-hidden flex">
                       <div className="h-full bg-brand-success transition-all duration-700" style={{ width: total > 0 ? `${(week.ingresos / total) * 100}%` : '0%' }} />

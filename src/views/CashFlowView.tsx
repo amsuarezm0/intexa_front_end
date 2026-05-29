@@ -1,12 +1,13 @@
-import { useState, useEffect, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Plus, TrendingUp, AlertTriangle, ArrowDownCircle, Filter, ArrowUpRight, ArrowDownLeft, X } from 'lucide-react';
+import { AlertTriangle,ArrowDownCircle,ArrowDownLeft,ArrowUpRight,ChevronLeft,ChevronRight,Filter,Plus,TrendingUp,X } from 'lucide-react';
 import { motion } from 'motion/react';
-import { Skeleton, SkeletonCard } from '../components/Skeleton';
-import { TransactionDetailDrawer } from '../components/TransactionDetailDrawer';
+import { useEffect,useMemo,useState } from 'react';
+import { Skeleton,SkeletonCard } from '../components/Skeleton';
 import { StatusBadge } from '../components/StatusBadge';
-import { cashFlowService, transactionsService, type CashFlowSummary, type Transaction } from '../services';
+import { TransactionDetailDrawer } from '../components/TransactionDetailDrawer';
 import { useSettings } from '../contexts/SettingsContext';
+import { canWrite } from '../lib/roles';
 import { cn } from '../lib/utils';
+import { cashFlowService,transactionsService,type CashFlowSummary,type Transaction } from '../services';
 
 type Period = 'day' | 'week' | 'month';
 
@@ -26,16 +27,19 @@ function dateKey(d: Date) {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
 
-interface ChartPoint { label: string; date: number; ingresos: number; egresos: number; proyIngresos: number; proyEgresos: number; }
+interface ChartPoint { label: string; date: number; ingresos: number; egresos: number; pendingIngresos: number; pendingEgresos: number; proyIngresos: number; proyEgresos: number; }
 
 function sumTxs(txs: Transaction[]) {
-  const real = txs.filter(t => !t.isProjection);
-  const proj = txs.filter(t => t.isProjection);
+  const completed = txs.filter(t => !t.isProjection && t.status === 'Completado');
+  const pending   = txs.filter(t => !t.isProjection && t.status === 'Pendiente');
+  const proj      = txs.filter(t => t.isProjection);
   return {
-    ingresos:     real.filter(t => t.type === 'Ingreso').reduce((s, t) => s + t.amount, 0),
-    egresos:      real.filter(t => t.type === 'Egreso').reduce((s, t) => s + t.amount, 0),
-    proyIngresos: proj.filter(t => t.type === 'Ingreso').reduce((s, t) => s + t.amount, 0),
-    proyEgresos:  proj.filter(t => t.type === 'Egreso').reduce((s, t) => s + t.amount, 0),
+    ingresos:        completed.filter(t => t.type === 'Ingreso').reduce((s, t) => s + t.amount, 0),
+    egresos:         completed.filter(t => t.type === 'Egreso').reduce((s, t) => s + t.amount, 0),
+    pendingIngresos: pending.filter(t => t.type === 'Ingreso').reduce((s, t) => s + t.amount, 0),
+    pendingEgresos:  pending.filter(t => t.type === 'Egreso').reduce((s, t) => s + t.amount, 0),
+    proyIngresos:    proj.filter(t => t.type === 'Ingreso').reduce((s, t) => s + t.amount, 0),
+    proyEgresos:     proj.filter(t => t.type === 'Egreso').reduce((s, t) => s + t.amount, 0),
   };
 }
 
@@ -59,10 +63,26 @@ function buildChart(txs: Transaction[], period: Period, ref: Date): ChartPoint[]
     const realEg  = dayTxs.filter(t => !t.isProjection && t.type === 'Egreso');
     const projAll = dayTxs.filter(t => t.isProjection);
     return [
-      { label: 'TOTAL',        date: dayTxs.length,  ingresos,      egresos,      proyIngresos,    proyEgresos    },
-      { label: 'INGRESOS',     date: realIn.length,   ingresos,      egresos: 0,   proyIngresos: 0, proyEgresos: 0 },
-      { label: 'EGRESOS',      date: realEg.length,   ingresos: 0,   egresos,      proyIngresos: 0, proyEgresos: 0 },
-      { label: 'PROYECCIONES', date: projAll.length,  ingresos: 0,   egresos: 0,   proyIngresos,    proyEgresos    },
+      {
+        label: 'TOTAL', date: dayTxs.length, ingresos, egresos, proyIngresos, proyEgresos,
+        pendingIngresos: 0,
+        pendingEgresos: 0
+      },
+      {
+        label: 'INGRESOS', date: realIn.length, ingresos, egresos: 0, proyIngresos: 0, proyEgresos: 0,
+        pendingIngresos: 0,
+        pendingEgresos: 0
+      },
+      {
+        label: 'EGRESOS', date: realEg.length, ingresos: 0, egresos, proyIngresos: 0, proyEgresos: 0,
+        pendingIngresos: 0,
+        pendingEgresos: 0
+      },
+      {
+        label: 'PROYECCIONES', date: projAll.length, ingresos: 0, egresos: 0, proyIngresos, proyEgresos,
+        pendingIngresos: 0,
+        pendingEgresos: 0
+      },
     ];
   }
 
@@ -133,7 +153,7 @@ function getPeriodTxs(txs: Transaction[], period: Period, ref: Date): Transactio
   });
 }
 
-export function CashFlowView({ onCreateMovement, onCreateProjection }: { onCreateMovement?: () => void; onCreateProjection?: () => void }) {
+export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { onCreateMovement?: () => void; onCreateProjection?: () => void; user?: import('../App').LoggedInUser | null }) {
   const [summary, setSummary] = useState<CashFlowSummary>({ days: [], projectedBalance: 0, projectedChange: 0, alerts: [] });
   const [allTxs, setAllTxs] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -180,6 +200,21 @@ export function CashFlowView({ onCreateMovement, onCreateProjection }: { onCreat
 
   const activeFilters = (filterType !== 'Todos' ? 1 : 0) + (filterStatus !== 'Todos' ? 1 : 0) + (filterSource !== 'Todos' ? 1 : 0) + (filterRecord !== 'Todos' ? 1 : 0);
 
+  const projectedBalance = useMemo(() => {
+    const horizon = new Date();
+    horizon.setDate(horizon.getDate() + 30);
+    const balance = allTxs
+      .filter(t => !t.isProjection && t.status !== 'Cancelado')
+      .reduce((sum, t) => sum + (t.type === 'Ingreso' ? t.amount : -t.amount), 0);
+    const pendingInc = allTxs
+      .filter(t => !t.isProjection && t.status === 'Pendiente' && t.type === 'Ingreso' && parseTxDate(t.date) <= horizon)
+      .reduce((sum, t) => sum + t.amount, 0);
+    const pendingExp = allTxs
+      .filter(t => !t.isProjection && t.status === 'Pendiente' && t.type === 'Egreso' && parseTxDate(t.date) <= horizon)
+      .reduce((sum, t) => sum + t.amount, 0);
+    return balance + pendingInc - pendingExp;
+  }, [allTxs]);
+
   const calendarCells = useMemo(() => {
     if (period !== 'month') return [];
     const year = currentDate.getFullYear();
@@ -221,6 +256,7 @@ export function CashFlowView({ onCreateMovement, onCreateProjection }: { onCreat
       onClose={() => setSelectedTx(null)}
       onDeleted={id => { setSelectedTx(null); setAllTxs(prev => prev.filter(t => t.id !== id)); }}
       onUpdated={tx => { setSelectedTx(tx); setAllTxs(prev => prev.map(t => t.id === tx.id ? tx : t)); }}
+      canWrite={canWrite(user?.role)}
     />
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8 pb-12">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
@@ -245,7 +281,7 @@ export function CashFlowView({ onCreateMovement, onCreateProjection }: { onCreat
         <div className="relative z-10 flex items-center justify-between gap-6">
           <div>
             <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest">Saldo Proyectado (30d)</p>
-            <p className="text-2xl font-black tracking-tight mt-1">{formatCurrency(summary.projectedBalance)}</p>
+            <p className="text-2xl font-black tracking-tight mt-1">{formatCurrency(projectedBalance)}</p>
           </div>
           <div className="flex items-center gap-2">
             <TrendingUp className="text-brand-success" size={20} />
@@ -268,6 +304,7 @@ export function CashFlowView({ onCreateMovement, onCreateProjection }: { onCreat
             <div className="flex gap-4">
               <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-brand-success" /><span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">INGRESOS</span></div>
               <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-brand-danger" /><span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">EGRESOS</span></div>
+              <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-amber-400" /><span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">PENDIENTE</span></div>
               <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-orange-400" /><span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">PROYECTADO</span></div>
             </div>
           </div>
@@ -305,16 +342,20 @@ export function CashFlowView({ onCreateMovement, onCreateProjection }: { onCreat
                         {cell.day}
                       </span>
                       {realIn > 0 && (
-                        <span className="text-[10px] font-bold text-brand-success leading-tight">+{formatCompact(realIn)}</span>
+                        <span className="text-[10px] font-bold text-brand-success leading-tight" title={`+${formatCurrency(realIn)}`}>+{formatCompact(realIn)}</span>
                       )}
                       {realEg > 0 && (
-                        <span className="text-[10px] font-bold text-brand-danger leading-tight">-{formatCompact(realEg)}</span>
+                        <span className="text-[10px] font-bold text-brand-danger leading-tight" title={`-${formatCurrency(realEg)}`}>-{formatCompact(realEg)}</span>
                       )}
+                      {(() => { const { pendingIngresos: pIn, pendingEgresos: pEg } = sumTxs(cell.txs); return (<>
+                        {pIn > 0 && <span className="text-[10px] font-bold text-amber-500 leading-tight" title={`~+${formatCurrency(pIn)}`}>~+{formatCompact(pIn)}</span>}
+                        {pEg > 0 && <span className="text-[10px] font-bold text-amber-500 leading-tight" title={`~-${formatCurrency(pEg)}`}>~-{formatCompact(pEg)}</span>}
+                      </>); })()}
                       {projIn > 0 && (
-                        <span className="text-[10px] font-bold text-orange-500 leading-tight">~+{formatCompact(projIn)}</span>
+                        <span className="text-[10px] font-bold text-orange-500 leading-tight" title={`~+${formatCurrency(projIn)}`}>~+{formatCompact(projIn)}</span>
                       )}
                       {projEg > 0 && (
-                        <span className="text-[10px] font-bold text-orange-500 leading-tight">~-{formatCompact(projEg)}</span>
+                        <span className="text-[10px] font-bold text-orange-500 leading-tight" title={`~-${formatCurrency(projEg)}`}>~-{formatCompact(projEg)}</span>
                       )}
                       {cell.txs.length > 1 && (
                         <span className="text-[9px] font-bold text-slate-400 mt-auto">{cell.txs.length} mov.</span>
@@ -329,8 +370,8 @@ export function CashFlowView({ onCreateMovement, onCreateProjection }: { onCreat
             <div className="grid grid-cols-4 gap-3">
               {chartData.map((d, i) => {
                 const colors = ['text-slate-600', 'text-brand-success', 'text-brand-danger', 'text-orange-500'];
-                const hasIn  = d.ingresos > 0 || d.proyIngresos > 0;
-                const hasEg  = d.egresos > 0  || d.proyEgresos > 0;
+                const hasIn  = d.ingresos > 0 || d.pendingIngresos > 0 || d.proyIngresos > 0;
+                const hasEg  = d.egresos > 0  || d.pendingEgresos > 0 || d.proyEgresos > 0;
                 return (
                   <div key={i} className="rounded-2xl border border-slate-100 bg-white p-4 space-y-3">
                     <div className="flex items-center justify-between">
@@ -338,18 +379,26 @@ export function CashFlowView({ onCreateMovement, onCreateProjection }: { onCreat
                       <span className="text-[10px] font-bold text-slate-400">{d.date} mov.</span>
                     </div>
                     {hasIn && (
-                      <div className={cn("rounded-xl px-3 py-2", d.ingresos > 0 ? "bg-brand-success/10" : "bg-orange-50")}>
+                      <div className={cn("rounded-xl px-3 py-2",
+                        d.ingresos > 0 ? "bg-brand-success/10" : d.pendingIngresos > 0 ? "bg-amber-50" : "bg-orange-50"
+                      )}>
                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Ingresos</p>
-                        <p className={cn("text-sm font-extrabold", d.ingresos > 0 ? "text-brand-success" : "text-orange-500")}>
-                          {d.ingresos > 0 ? `+${formatCompact(d.ingresos)}` : `~+${formatCompact(d.proyIngresos)}`}
+                        <p className={cn("text-sm font-extrabold",
+                          d.ingresos > 0 ? "text-brand-success" : d.pendingIngresos > 0 ? "text-amber-500" : "text-orange-500"
+                        )} title={d.ingresos > 0 ? `+${formatCurrency(d.ingresos)}` : d.pendingIngresos > 0 ? `~+${formatCurrency(d.pendingIngresos)}` : `~+${formatCurrency(d.proyIngresos)}`}>
+                          {d.ingresos > 0 ? `+${formatCompact(d.ingresos)}` : d.pendingIngresos > 0 ? `~+${formatCompact(d.pendingIngresos)}` : `~+${formatCompact(d.proyIngresos)}`}
                         </p>
                       </div>
                     )}
                     {hasEg && (
-                      <div className={cn("rounded-xl px-3 py-2", d.egresos > 0 ? "bg-brand-danger/10" : "bg-orange-50")}>
+                      <div className={cn("rounded-xl px-3 py-2",
+                        d.egresos > 0 ? "bg-brand-danger/10" : d.pendingEgresos > 0 ? "bg-amber-50" : "bg-orange-50"
+                      )}>
                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Egresos</p>
-                        <p className={cn("text-sm font-extrabold", d.egresos > 0 ? "text-brand-danger" : "text-orange-500")}>
-                          {d.egresos > 0 ? `-${formatCompact(d.egresos)}` : `~-${formatCompact(d.proyEgresos)}`}
+                        <p className={cn("text-sm font-extrabold",
+                          d.egresos > 0 ? "text-brand-danger" : d.pendingEgresos > 0 ? "text-amber-500" : "text-orange-500"
+                        )} title={d.egresos > 0 ? `-${formatCurrency(d.egresos)}` : d.pendingEgresos > 0 ? `~-${formatCurrency(d.pendingEgresos)}` : `~-${formatCurrency(d.proyEgresos)}`}>
+                          {d.egresos > 0 ? `-${formatCompact(d.egresos)}` : d.pendingEgresos > 0 ? `~-${formatCompact(d.pendingEgresos)}` : `~-${formatCompact(d.proyEgresos)}`}
                         </p>
                       </div>
                     )}
@@ -371,18 +420,22 @@ export function CashFlowView({ onCreateMovement, onCreateProjection }: { onCreat
                     <div className="flex-1 flex flex-col gap-2">
                       <div className={cn(
                         "flex-1 rounded-2xl border flex flex-col items-center justify-center p-2",
-                        d.ingresos > 0 ? "bg-brand-success/10 border-brand-success/10" : d.proyIngresos > 0 ? "bg-orange-50 border-orange-100" : "bg-slate-50 border-slate-100"
+                        d.ingresos > 0 ? "bg-brand-success/10 border-brand-success/10" : d.pendingIngresos > 0 ? "bg-amber-50 border-amber-100" : d.proyIngresos > 0 ? "bg-orange-50 border-orange-100" : "bg-slate-50 border-slate-100"
                       )}>
-                        <span className={cn("text-[10px] font-bold", d.ingresos > 0 ? "text-brand-success" : d.proyIngresos > 0 ? "text-orange-500" : "text-slate-300")}>
-                          {d.ingresos > 0 ? `+${formatCompact(d.ingresos)}` : d.proyIngresos > 0 ? `~+${formatCompact(d.proyIngresos)}` : '—'}
+                        <span className={cn("text-[10px] font-bold",
+                          d.ingresos > 0 ? "text-brand-success" : d.pendingIngresos > 0 ? "text-amber-500" : d.proyIngresos > 0 ? "text-orange-500" : "text-slate-300"
+                        )} title={d.ingresos > 0 ? `+${formatCurrency(d.ingresos)}` : d.pendingIngresos > 0 ? `~+${formatCurrency(d.pendingIngresos)}` : d.proyIngresos > 0 ? `~+${formatCurrency(d.proyIngresos)}` : undefined}>
+                          {d.ingresos > 0 ? `+${formatCompact(d.ingresos)}` : d.pendingIngresos > 0 ? `~+${formatCompact(d.pendingIngresos)}` : d.proyIngresos > 0 ? `~+${formatCompact(d.proyIngresos)}` : '—'}
                         </span>
                       </div>
                       <div className={cn(
                         "h-24 rounded-2xl border flex flex-col items-center justify-center p-2",
-                        d.egresos > 0 ? "bg-brand-danger/10 border-brand-danger/10" : d.proyEgresos > 0 ? "bg-orange-50 border-orange-100" : "bg-slate-50 border-slate-100"
+                        d.egresos > 0 ? "bg-brand-danger/10 border-brand-danger/10" : d.pendingEgresos > 0 ? "bg-amber-50 border-amber-100" : d.proyEgresos > 0 ? "bg-orange-50 border-orange-100" : "bg-slate-50 border-slate-100"
                       )}>
-                        <span className={cn("text-[10px] font-bold", d.egresos > 0 ? "text-brand-danger" : d.proyEgresos > 0 ? "text-orange-500" : "text-slate-300")}>
-                          {d.egresos > 0 ? `-${formatCompact(d.egresos)}` : d.proyEgresos > 0 ? `~-${formatCompact(d.proyEgresos)}` : '—'}
+                        <span className={cn("text-[10px] font-bold",
+                          d.egresos > 0 ? "text-brand-danger" : d.pendingEgresos > 0 ? "text-amber-500" : d.proyEgresos > 0 ? "text-orange-500" : "text-slate-300"
+                        )} title={d.egresos > 0 ? `-${formatCurrency(d.egresos)}` : d.pendingEgresos > 0 ? `~-${formatCurrency(d.pendingEgresos)}` : d.proyEgresos > 0 ? `~-${formatCurrency(d.proyEgresos)}` : undefined}>
+                          {d.egresos > 0 ? `-${formatCompact(d.egresos)}` : d.pendingEgresos > 0 ? `~-${formatCompact(d.pendingEgresos)}` : d.proyEgresos > 0 ? `~-${formatCompact(d.proyEgresos)}` : '—'}
                         </span>
                       </div>
                     </div>
@@ -433,12 +486,16 @@ export function CashFlowView({ onCreateMovement, onCreateProjection }: { onCreat
                 </span>
               )}
             </button>
-            <button onClick={onCreateProjection} className="flex items-center gap-2 bg-orange-500 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-orange-600 transition-all shadow-lg shadow-orange-500/20">
-              <Plus size={20} /><span>Nueva Proyección</span>
-            </button>
-            <button onClick={onCreateMovement} className="flex items-center gap-2 bg-brand-dark text-white px-5 py-2.5 rounded-xl font-bold hover:bg-brand-accent transition-all shadow-lg shadow-brand-dark/20">
-              <Plus size={20} /><span>Nuevo Movimiento</span>
-            </button>
+            {canWrite(user?.role) && (
+              <>
+                <button onClick={onCreateProjection} className="flex items-center gap-2 bg-orange-500 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-orange-600 transition-all shadow-lg shadow-orange-500/20">
+                  <Plus size={20} /><span>Nueva Proyección</span>
+                </button>
+                <button onClick={onCreateMovement} className="flex items-center gap-2 bg-brand-dark text-white px-5 py-2.5 rounded-xl font-bold hover:bg-brand-accent transition-all shadow-lg shadow-brand-dark/20">
+                  <Plus size={20} /><span>Nuevo Movimiento</span>
+                </button>
+              </>
+            )}
           </div>
         </div>
 

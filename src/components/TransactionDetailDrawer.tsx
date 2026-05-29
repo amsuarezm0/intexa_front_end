@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { X, ArrowUpRight, ArrowDownLeft, Calendar, Tag, Hash, Database, Trash2, Pencil, Check } from 'lucide-react';
-import { type Transaction, transactionsService, categoriesService, type Category } from '../services';
+import { ArrowDownLeft,ArrowUpRight,Calendar,Check,Database,Hash,Pencil,Tag,Trash2,X } from 'lucide-react';
+import { AnimatePresence,motion } from 'motion/react';
+import { useEffect,useState } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
 import { cn } from '../lib/utils';
-import { StatusBadge } from './StatusBadge';
+import { categoriesService,type Category,type Transaction,transactionsService } from '../services';
 import { CategoryBadge } from './CategoryBadge';
+import { StatusBadge } from './StatusBadge';
 
 interface Props {
   transaction: Transaction | null;
@@ -13,9 +13,10 @@ interface Props {
   onClose: () => void;
   onDeleted?: (id: string) => void;
   onUpdated?: (tx: Transaction) => void;
+  canWrite?: boolean;
 }
 
-export function TransactionDetailDrawer({ transaction, isLoading, onClose, onDeleted, onUpdated }: Props) {
+export function TransactionDetailDrawer({ transaction, isLoading, onClose, onDeleted, onUpdated, canWrite = true }: Props) {
   const { formatCurrency } = useSettings();
   const [showConfirm, setShowConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -32,7 +33,7 @@ export function TransactionDetailDrawer({ transaction, isLoading, onClose, onDel
   const [editStatus, setEditStatus]       = useState<'Completado' | 'Pendiente' | 'Cancelado'>('Pendiente');
 
   const open = !!(transaction || isLoading);
-  const canEdit = transaction && transaction.source !== 'Siigo';
+  const canEdit = transaction && transaction.source !== 'Siigo' && canWrite;
 
   useEffect(() => {
     if (editing) {

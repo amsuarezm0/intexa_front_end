@@ -1,23 +1,24 @@
-import { useState, useRef, useEffect, type ReactNode } from 'react';
 import {
-  LayoutDashboard,
-  Wallet,
-  TrendingUp,
-  ArrowLeftRight,
-  BarChart3,
-  Settings,
-  Bell,
-  Search,
-  LogOut,
-  RefreshCw,
-  CheckCircle2,
-  Menu,
-  X,
+ArrowLeftRight,
+BarChart3,
+Bell,
+CheckCircle2,
+LayoutDashboard,
+LogOut,
+Menu,
+RefreshCw,
+Search,
+Settings,
+TrendingUp,
+Wallet,
+X,
 } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { useEffect,useRef,useState,type ReactNode } from 'react';
 import type { LoggedInUser } from '../App';
-import { siigoService, notificationsService, type SiigoSyncMode, type NotificationSummary } from '../services';
 import { useSettings } from '../contexts/SettingsContext';
+import { canWrite } from '../lib/roles';
+import { cn } from '../lib/utils';
+import { notificationsService,siigoService,type NotificationSummary,type SiigoSyncMode } from '../services';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -152,7 +153,7 @@ export function MainLayout({ children, currentView, onNavigate, onLogout, onSync
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Header */}
-        <header className="h-16 bg-white border-b border-slate-100 flex items-center justify-between px-4 sm:px-8 z-10 gap-3">
+        <header className="h-16 bg-white border-b border-slate-100 flex items-center justify-between px-4 sm:px-8 relative z-30 gap-3">
 
           {/* Hamburger — mobile only */}
           <button
@@ -175,8 +176,8 @@ export function MainLayout({ children, currentView, onNavigate, onLogout, onSync
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4 ml-auto">
-            {/* Sync button with mode dropdown */}
-            <div className="relative" ref={syncMenuRef}>
+            {/* Sync button — admin + tesorería */}
+            {canWrite(user?.role) && <div className="relative" ref={syncMenuRef}>
               <div className={cn(
                 "flex rounded-xl overflow-hidden text-sm font-semibold transition-all",
                 syncState === 'idle' && "bg-brand-primary/10 text-brand-primary",
@@ -206,7 +207,7 @@ export function MainLayout({ children, currentView, onNavigate, onLogout, onSync
               </div>
 
               {showSyncMenu && (
-                <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden">
+                <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 z-[200] overflow-hidden">
                   <div className="p-1">
                     <button
                       onClick={() => handleSyncSiigo('incremental')}
@@ -249,7 +250,7 @@ export function MainLayout({ children, currentView, onNavigate, onLogout, onSync
                   </div>
                 </div>
               )}
-            </div>
+            </div>}
 
             <div className="relative" ref={notifRef}>
               <button
@@ -265,7 +266,7 @@ export function MainLayout({ children, currentView, onNavigate, onLogout, onSync
               </button>
 
               {showNotifications && (
-                <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white rounded-3xl shadow-2xl border border-slate-100 z-50 overflow-hidden">
+                <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white rounded-3xl shadow-2xl border border-slate-100 z-[200] overflow-hidden">
                   <div className="p-5 border-b border-slate-100 flex justify-between items-center">
                     <div>
                       <h3 className="text-base font-black text-slate-900">Notificaciones</h3>

@@ -1,16 +1,16 @@
-import { useState, useEffect } from 'react';
-import { LoginView } from './views/LoginView';
+import { useEffect,useState } from 'react';
+import { SettingsProvider } from './contexts/SettingsContext';
+import { MainLayout } from './layouts/MainLayout';
+import { clearToken,getStoredUser,getToken,setStoredUser } from './lib/api';
+import { CashFlowView } from './views/CashFlowView';
+import { CreateMovementView } from './views/CreateMovementView';
+import { CreateProjectionView } from './views/CreateProjectionView';
 import { DashboardView } from './views/DashboardView';
+import { LoginView } from './views/LoginView';
 import { MovementsView } from './views/MovementsView';
 import { ProjectionsView } from './views/ProjectionsView';
 import { ReportsView } from './views/ReportsView';
 import { SettingsView } from './views/SettingsView';
-import { CashFlowView } from './views/CashFlowView';
-import { CreateMovementView } from './views/CreateMovementView';
-import { CreateProjectionView } from './views/CreateProjectionView';
-import { MainLayout } from './layouts/MainLayout';
-import { getToken, clearToken, getStoredUser, setStoredUser } from './lib/api';
-import { SettingsProvider } from './contexts/SettingsContext';
 
 type View = 'login' | 'dashboard' | 'cashflow' | 'projections' | 'movements' | 'reports' | 'settings' | 'create-movement' | 'create-projection';
 
@@ -51,16 +51,16 @@ export default function App() {
       case 'dashboard':
         return <DashboardView key={refreshKey} onCreateMovement={() => handleNavigate('create-movement')} user={user} />;
       case 'cashflow':
-        return <CashFlowView key={refreshKey} onCreateMovement={() => handleNavigate('create-movement')} onCreateProjection={handleCreateProjection} />;
+        return <CashFlowView key={refreshKey} onCreateMovement={() => handleNavigate('create-movement')} onCreateProjection={handleCreateProjection} user={user} />;
       case 'movements':
-        return <MovementsView key={refreshKey} onCreateMovement={() => handleNavigate('create-movement')} />;
+        return <MovementsView key={refreshKey} onCreateMovement={() => handleNavigate('create-movement')} user={user} />;
       case 'create-movement':
         return <CreateMovementView
           onBack={() => handleNavigate('movements')}
           onSave={() => handleNavigate('movements')}
         />;
       case 'projections':
-        return <ProjectionsView onCreateProjection={handleCreateProjection} />;
+        return <ProjectionsView onCreateProjection={handleCreateProjection} user={user} />;
       case 'create-projection':
         return <CreateProjectionView onBack={() => handleNavigate('projections')} onSave={() => handleNavigate('projections')} />;
       case 'reports':

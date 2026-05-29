@@ -1,4 +1,4 @@
-import { Transaction, StatCardData, ChartDataPoint } from './types';
+import { ChartDataPoint,StatCardData,Transaction } from './types';
 
 export const mockStats: StatCardData[] = [
   {

@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { Eye,EyeOff,LayoutDashboard } from 'lucide-react';
 import { motion } from 'motion/react';
-import { Eye, EyeOff, LayoutDashboard } from 'lucide-react';
-import { authService } from '../services';
-import { setToken } from '../lib/api';
+import { useState } from 'react';
 import type { LoggedInUser } from '../App';
+import { setToken } from '../lib/api';
+import { authService } from '../services';
 
 interface LoginViewProps {
   onLogin: (user: LoggedInUser) => void;

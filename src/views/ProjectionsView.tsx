@@ -1,22 +1,34 @@
-import { useState, useEffect } from 'react';
-import { Building2, TrendingUp, TrendingDown, Plus, AlertCircle, FileCheck, Clock } from 'lucide-react';
+import { AlertCircle,Building2,Clock,FileCheck,Plus,TrendingDown,TrendingUp } from 'lucide-react';
 import { motion } from 'motion/react';
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import { Skeleton, SkeletonCard, SkeletonChart } from '../components/Skeleton';
-import { projectionsService, type ProjectionSummary } from '../services';
+import { useEffect,useState } from 'react';
+import { Area,AreaChart,CartesianGrid,ResponsiveContainer,Tooltip,XAxis,YAxis } from 'recharts';
+import type { LoggedInUser } from '../App';
+import { Skeleton,SkeletonCard,SkeletonChart } from '../components/Skeleton';
+import { TransactionDetailDrawer } from '../components/TransactionDetailDrawer';
 import { useSettings } from '../contexts/SettingsContext';
 import { cn } from '../lib/utils';
+import { projectionsService,transactionsService,type ProjectionSummary,type Transaction } from '../services';
 
 const iconMap: Record<string, any> = { AlertCircle, FileCheck, Clock };
 
 const PERIODS = [30, 60, 90] as const;
 type Period = 30 | 60 | 90;
 
-export function ProjectionsView({ onCreateProjection }: { onCreateProjection?: () => void }) {
+export function ProjectionsView({ onCreateProjection, user }: { onCreateProjection?: () => void; user?: LoggedInUser | null }) {
   const [dataMap, setDataMap] = useState<Partial<Record<Period, ProjectionSummary>>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [chartPeriod, setChartPeriod] = useState<Period>(30);
+  const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
+  const [txLoading, setTxLoading] = useState(false);
+
+  function handleAlertClick(id: string) {
+    setSelectedTx(null);
+    setTxLoading(true);
+    transactionsService.get(id)
+      .then(setSelectedTx)
+      .finally(() => setTxLoading(false));
+  }
 
   useEffect(() => {
     setIsLoading(true);
@@ -31,7 +43,7 @@ export function ProjectionsView({ onCreateProjection }: { onCreateProjection?: (
       .finally(() => setIsLoading(false));
   }, []);
 
-  const { formatCurrency } = useSettings();
+  const { formatCurrency, formatCompact } = useSettings();
 
   if (error) return <div className="p-8 text-brand-danger font-semibold">{error}</div>;
   if (isLoading || !dataMap[30]) {
@@ -47,6 +59,7 @@ export function ProjectionsView({ onCreateProjection }: { onCreateProjection?: (
   const chartData = dataMap[chartPeriod]?.chartData ?? [];
 
   return (
+    <>
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
         <div className="space-y-1">
@@ -96,8 +109,8 @@ export function ProjectionsView({ onCreateProjection }: { onCreateProjection?: (
                     <TrendingUp size={14} className={isActive ? "text-emerald-400" : "text-brand-success"} />
                     <span className={cn("text-xs font-bold uppercase tracking-widest", isActive ? "text-white/60" : "text-slate-400")}>Ingresos</span>
                   </div>
-                  <span className={cn("text-sm font-extrabold", isActive ? "text-emerald-400" : "text-brand-success")}>
-                    {p ? formatCurrency(p.projectedIncome) : '—'}
+                  <span className={cn("text-sm font-extrabold", isActive ? "text-emerald-400" : "text-brand-success")} title={p ? formatCurrency(p.projectedIncome) : undefined}>
+                    {p ? formatCompact(p.projectedIncome) : '—'}
                   </span>
                 </div>
 
@@ -106,8 +119,8 @@ export function ProjectionsView({ onCreateProjection }: { onCreateProjection?: (
                     <TrendingDown size={14} className={isActive ? "text-red-400" : "text-brand-danger"} />
                     <span className={cn("text-xs font-bold uppercase tracking-widest", isActive ? "text-white/60" : "text-slate-400")}>Egresos</span>
                   </div>
-                  <span className={cn("text-sm font-extrabold", isActive ? "text-red-400" : "text-brand-danger")}>
-                    {p ? formatCurrency(p.projectedExpenses) : '—'}
+                  <span className={cn("text-sm font-extrabold", isActive ? "text-red-400" : "text-brand-danger")} title={p ? formatCurrency(p.projectedExpenses) : undefined}>
+                    {p ? formatCompact(p.projectedExpenses) : '—'}
                   </span>
                 </div>
 
@@ -117,8 +130,8 @@ export function ProjectionsView({ onCreateProjection }: { onCreateProjection?: (
                       <Building2 size={14} className={isActive ? "text-white/60" : "text-slate-400"} />
                       <span className={cn("text-xs font-bold uppercase tracking-widest", isActive ? "text-white/60" : "text-slate-400")}>Saldo Est.</span>
                     </div>
-                    <span className={cn("text-base font-black", isActive ? "text-white" : "text-slate-900")}>
-                      {p ? formatCurrency(p.estimatedBalance) : '—'}
+                    <span className={cn("text-base font-black", isActive ? "text-white" : "text-slate-900")} title={p ? formatCurrency(p.estimatedBalance) : undefined}>
+                      {p ? formatCompact(p.estimatedBalance) : '—'}
                     </span>
                   </div>
                 </div>
@@ -171,7 +184,7 @@ export function ProjectionsView({ onCreateProjection }: { onCreateProjection?: (
           {(dataMap[chartPeriod]?.alerts ?? []).map(alert => {
             const Icon = iconMap[alert.icon] ?? AlertCircle;
             return (
-              <div key={alert.id} className={cn(
+              <div key={alert.id} onClick={() => handleAlertClick(alert.id)} className={cn(
                 "p-4 sm:p-6 rounded-2xl sm:rounded-[32px] border transition-all cursor-pointer group flex items-start gap-4 sm:gap-6",
                 alert.color === 'brand-danger' ? "bg-brand-danger/[0.03] border-brand-danger/10 hover:bg-brand-danger/[0.08]" :
                 alert.color === 'brand-success' ? "bg-brand-success/[0.03] border-brand-success/10 hover:bg-brand-success/[0.08]" :
@@ -194,7 +207,9 @@ export function ProjectionsView({ onCreateProjection }: { onCreateProjection?: (
                   <p className="text-xs font-semibold text-slate-500">{alert.description}</p>
                 </div>
                 <div className="text-right ml-4">
-                  <p className="text-sm font-black text-slate-900">{alert.amount}</p>
+                  <p className="text-sm font-black text-slate-900" title={formatCurrency(alert.amount)}>
+                    {formatCompact(alert.amount)}
+                  </p>
                 </div>
               </div>
             );
@@ -202,5 +217,12 @@ export function ProjectionsView({ onCreateProjection }: { onCreateProjection?: (
         </div>
       </div>
     </motion.div>
+
+    <TransactionDetailDrawer
+      transaction={selectedTx}
+      isLoading={txLoading}
+      onClose={() => { setSelectedTx(null); setTxLoading(false); }}
+    />
+    </>
   );
 }

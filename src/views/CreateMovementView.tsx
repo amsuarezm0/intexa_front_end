@@ -1,13 +1,18 @@
-import { useState, useEffect } from 'react';
 import {
-  ArrowLeft, ArrowDownCircle, ArrowUpCircle,
-  Calendar as CalendarIcon, ChevronDown,
-  Sparkles, Zap, User, CheckCircle2, TrendingUp
+ArrowDownCircle,ArrowUpCircle,
+Calendar as CalendarIcon,
+CheckCircle2,
+ChevronDown,
+Sparkles,
+TrendingUp,
+User,
+Zap
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { transactionsService, categoriesService, type Category, type TransactionSummary } from '../services';
+import { useEffect,useState } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
 import { cn } from '../lib/utils';
+import { categoriesService,transactionsService,type Category,type TransactionSummary } from '../services';
 
 interface CreateMovementViewProps {
   onBack: () => void;

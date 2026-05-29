@@ -1,13 +1,13 @@
-import { useState, useEffect } from 'react';
-import { UserPlus, MoreVertical, ChevronDown, ShieldCheck, History, Eye, X } from 'lucide-react';
+import { ChevronDown,Eye,History,MoreVertical,ShieldCheck,UserPlus,X } from 'lucide-react';
 import { motion } from 'motion/react';
-import { Skeleton, SkeletonCard } from '../components/Skeleton';
-import { usersService, settingsService, type User, type Settings, type ActivityLog } from '../services';
+import { useEffect,useState } from 'react';
+import { Skeleton,SkeletonCard } from '../components/Skeleton';
 import { useSettings } from '../contexts/SettingsContext';
 import { getStoredUser } from '../lib/api';
-import { cn, hashPassword } from '../lib/utils';
+import { cn,hashPassword } from '../lib/utils';
+import { settingsService,usersService,type ActivityLog,type Settings,type User } from '../services';
 
-const ROLES = ['ADMINISTRADOR', 'TESORERÍA', 'VISUALIZADOR'];
+const ROLES = ['ADMINISTRADOR', 'TESORERÍA', 'CONSULTA'];
 
 interface NewUserForm {
   name: string;
@@ -16,7 +16,7 @@ interface NewUserForm {
   password: string;
 }
 
-const emptyForm: NewUserForm = { name: '', email: '', role: 'VISUALIZADOR', password: '' };
+const emptyForm: NewUserForm = { name: '', email: '', role: 'CONSULTA', password: '' };
 
 export function SettingsView() {
   const currentUser = getStoredUser();
@@ -79,7 +79,7 @@ export function SettingsView() {
   const roleColor = (role: string) => {
     if (role === 'ADMINISTRADOR') return 'bg-brand-primary/10 text-brand-primary';
     if (role === 'TESORERÍA') return 'bg-brand-success/10 text-brand-success';
-    return 'bg-slate-200 text-slate-600';
+    return 'bg-slate-100 text-slate-500';
   };
 
   if (error) return <div className="p-8 text-brand-danger font-semibold">{error}</div>;
@@ -241,6 +241,7 @@ export function SettingsView() {
         </div>
       </div>
 
+      {isAdmin && (
       <div className="bg-white p-5 sm:p-12 rounded-3xl sm:rounded-[56px] border border-slate-100 card-shadow space-y-10">
         <div className="flex justify-between items-center">
           <h3 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-4">
@@ -285,6 +286,7 @@ export function SettingsView() {
           </table>
         </div>
       </div>
+      )}
     </motion.div>
   );
 }

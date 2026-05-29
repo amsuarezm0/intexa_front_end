@@ -1,13 +1,15 @@
-import { useState, useEffect } from 'react';
 import {
-  ArrowDownCircle, ArrowUpCircle,
-  Calendar as CalendarIcon, ChevronDown,
-  TrendingUp, TrendingDown, Building2
+ArrowDownCircle,ArrowUpCircle,
+Building2,
+Calendar as CalendarIcon,ChevronDown,
+TrendingDown,
+TrendingUp
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { projectionsService, categoriesService, type Category, type CreateProjectionInput } from '../services';
+import { useEffect,useState } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
 import { cn } from '../lib/utils';
+import { categoriesService,projectionsService,type Category,type CreateProjectionInput } from '../services';
 
 interface CreateProjectionViewProps {
   onBack: () => void;

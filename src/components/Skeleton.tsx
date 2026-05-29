@@ -1,6 +1,6 @@
-import type { CSSProperties, Key } from 'react';
-import { cn } from '../lib/utils';
 import { motion } from 'motion/react';
+import type { CSSProperties,Key } from 'react';
+import { cn } from '../lib/utils';
 
 interface SkeletonProps {
   className?: string;

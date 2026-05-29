@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react';
 import ExcelJS from 'exceljs';
-import { Download, TrendingUp, TrendingDown, ChevronRight, Sparkles } from 'lucide-react';
+import { ChevronRight,Download,Sparkles,TrendingDown,TrendingUp } from 'lucide-react';
 import { motion } from 'motion/react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Skeleton, SkeletonCard, SkeletonChart } from '../components/Skeleton';
-import { reportsService, type ReportSummary, type ReportPeriod } from '../services';
+import { useEffect,useState } from 'react';
+import { Bar,BarChart,CartesianGrid,ResponsiveContainer,Tooltip,XAxis,YAxis } from 'recharts';
+import { Skeleton,SkeletonCard,SkeletonChart } from '../components/Skeleton';
 import { useSettings } from '../contexts/SettingsContext';
 import { cn } from '../lib/utils';
+import { reportsService,type ReportPeriod,type ReportSummary } from '../services';
 
 const PERIODS: { key: ReportPeriod; label: string }[] = [
   { key: 'mensual', label: 'Mensual' },
@@ -135,7 +135,7 @@ export function ReportsView() {
       .finally(() => setIsLoading(false));
   }, [period]);
 
-  const { formatCurrency } = useSettings();
+  const { formatCurrency, formatCompact } = useSettings();
 
   if (error) return <div className="p-8 text-brand-danger font-semibold">{error}</div>;
   if (isLoading) {
@@ -206,7 +206,11 @@ export function ReportsView() {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 800 }} dy={15} />
                 <YAxis hide />
-                <Tooltip cursor={{ fill: '#F1F5F9' }} contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }} />
+                <Tooltip
+                  cursor={{ fill: '#F1F5F9' }}
+                  contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}
+                  formatter={(value: number, name: string) => [formatCompact(value), name]}
+                />
                 <Bar dataKey="ingresos" name="Ingresos" fill="#10B981" radius={[8, 8, 0, 0]} barSize={24} />
                 <Bar dataKey="egresos" name="Egresos" fill="#EF4444" radius={[8, 8, 0, 0]} barSize={24} />
               </BarChart>
@@ -296,7 +300,7 @@ export function ReportsView() {
             <div className="grid grid-cols-2 gap-6">
               <div className="p-6 bg-slate-50 rounded-[32px]">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">CIERRE PROYECTADO</p>
-                <p className="text-2xl font-black text-slate-900">{formatCurrency(data.annual.projectedClose)}</p>
+                <p className="text-2xl font-black text-slate-900" title={formatCurrency(data.annual.projectedClose)}>{formatCompact(data.annual.projectedClose)}</p>
               </div>
               <div className="p-6 bg-slate-50 rounded-[32px]">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">PROBABILIDAD</p>

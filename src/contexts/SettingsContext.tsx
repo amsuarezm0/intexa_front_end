@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
-import { settingsService, type Settings } from '../services';
+import { createContext,useCallback,useContext,useEffect,useState,type ReactNode } from 'react';
+import { settingsService,type Settings } from '../services';
 
 // ── Locale map ────────────────────────────────────────────────────────────────
 
@@ -38,8 +38,8 @@ interface SettingsCtx {
 
 const defaultCtx: SettingsCtx = {
   settings: null,
-  formatCurrency: (n) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 2 }).format(n),
-  formatCompact: (n) => new Intl.NumberFormat('es-CO', { notation: 'compact', maximumFractionDigits: 1 }).format(n),
+  formatCurrency: (n) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', currencyDisplay: 'code', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n),
+  formatCompact: (n) => `${new Intl.NumberFormat('es-CO', { notation: 'compact', maximumFractionDigits: 1 }).format(n)} COP`,
   currencyCode: 'COP',
   locale: 'es-CO',
   refreshSettings: () => {},
@@ -81,6 +81,7 @@ export function SettingsProvider({ children, userId }: SettingsProviderProps) {
     return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency,
+      currencyDisplay: 'code',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(converted);
@@ -88,10 +89,11 @@ export function SettingsProvider({ children, userId }: SettingsProviderProps) {
 
   const formatCompact = (amount: number) => {
     const converted = autoConvert ? convertFromCOP(amount, currency, rates!) : amount;
-    return new Intl.NumberFormat(locale, {
+    const formatted = new Intl.NumberFormat(locale, {
       notation: 'compact',
       maximumFractionDigits: 1,
     }).format(converted);
+    return `${formatted} ${currency}`;
   };
 
   return (

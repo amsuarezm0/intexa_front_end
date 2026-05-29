@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { motion } from 'motion/react';
 import { Landmark } from 'lucide-react';
+import { motion } from 'motion/react';
+import { useState } from 'react';
 
 interface Props {
   onConfirm: (amount: number) => void;

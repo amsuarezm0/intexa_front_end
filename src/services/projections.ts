@@ -13,7 +13,7 @@ export interface ProjectionAlert {
   title: string;
   description: string;
   dueDate: string;
-  amount: string;
+  amount: number;
   color: string;
 }
 

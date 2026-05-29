@@ -1,19 +1,25 @@
-import { useState, useEffect, useCallback } from 'react';
 import ExcelJS from 'exceljs';
 import {
-  Download, Filter, Plus, Search,
-  Building2, TrendingUp, TrendingDown,
-  ChevronLeft, ChevronRight, X,
-  ArrowUpRight, ArrowDownLeft,
+ArrowDownLeft,
+ArrowUpRight,
+Building2,
+ChevronLeft,ChevronRight,
+Download,Filter,Plus,Search,
+TrendingDown,
+TrendingUp,
+X,
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Skeleton, SkeletonCard } from '../components/Skeleton';
-import { TransactionDetailDrawer } from '../components/TransactionDetailDrawer';
-import { StatusBadge } from '../components/StatusBadge';
+import { AnimatePresence,motion } from 'motion/react';
+import { useCallback,useEffect,useState } from 'react';
+import type { LoggedInUser } from '../App';
 import { CategoryBadge } from '../components/CategoryBadge';
-import { transactionsService, type Transaction, type TransactionSummary } from '../services';
+import { Skeleton,SkeletonCard } from '../components/Skeleton';
+import { StatusBadge } from '../components/StatusBadge';
+import { TransactionDetailDrawer } from '../components/TransactionDetailDrawer';
 import { useSettings } from '../contexts/SettingsContext';
+import { canWrite } from '../lib/roles';
 import { cn } from '../lib/utils';
+import { transactionsService,type Transaction,type TransactionSummary } from '../services';
 
 const TYPE_OPTIONS = ['Ingreso', 'Egreso'] as const;
 const STATUS_OPTIONS = ['Completado', 'Pendiente', 'Cancelado'] as const;
@@ -66,9 +72,11 @@ async function exportXLSX(transactions: Transaction[], formatCurrency: (n: numbe
 export function MovementsView({
   onCreateMovement,
   initialSelectedId,
+  user,
 }: {
   onCreateMovement?: () => void;
   initialSelectedId?: string;
+  user?: LoggedInUser | null;
 }) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [summary, setSummary] = useState<TransactionSummary>({ totalBalance: 0, monthlyIncome: 0, monthlyExpense: 0 });
@@ -86,7 +94,7 @@ export function MovementsView({
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
 
-  const { formatCurrency } = useSettings();
+  const { formatCurrency, formatCompact } = useSettings();
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -162,7 +170,7 @@ export function MovementsView({
     );
   }
 
-  const fmt = (n: number) => formatCurrency(Math.abs(n));
+  const fmt = (n: number) => formatCompact(Math.abs(n));
   const balancePositive = summary.totalBalance >= 0;
 
   return (
@@ -173,6 +181,7 @@ export function MovementsView({
       onClose={() => setSelectedTx(null)}
       onDeleted={() => { setSelectedTx(null); fetchData(); }}
       onUpdated={tx => { setSelectedTx(tx); fetchData(); }}
+      canWrite={canWrite(user?.role)}
     />
 
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
@@ -215,7 +224,7 @@ export function MovementsView({
         <div className={cn("bg-white p-6 rounded-[32px] border card-shadow flex justify-between items-center cursor-default", balancePositive ? "border-slate-100" : "border-brand-danger/20")}>
           <div>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">BALANCE TOTAL</p>
-            <p className="text-2xl font-bold text-slate-900">
+            <p className="text-2xl font-bold text-slate-900" title={`${balancePositive ? '' : '-'}${formatCurrency(Math.abs(summary.totalBalance))}`}>
               {balancePositive ? '' : '-'}{fmt(summary.totalBalance)}
             </p>
           </div>
@@ -228,7 +237,7 @@ export function MovementsView({
         <div className="bg-white p-6 rounded-[32px] border border-slate-100 card-shadow flex justify-between items-center cursor-default">
           <div>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">INGRESOS MES</p>
-            <p className="text-2xl font-bold text-brand-success">+{fmt(summary.monthlyIncome)}</p>
+            <p className="text-2xl font-bold text-brand-success" title={`+${formatCurrency(summary.monthlyIncome)}`}>+{fmt(summary.monthlyIncome)}</p>
           </div>
           <div className="p-4 rounded-[20px] bg-brand-success/10 text-brand-success">
             <TrendingUp size={24} />
@@ -239,7 +248,7 @@ export function MovementsView({
         <div className="bg-white p-6 rounded-[32px] border border-slate-100 card-shadow flex justify-between items-center cursor-default">
           <div>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">EGRESOS MES</p>
-            <p className="text-2xl font-bold text-brand-danger">-{fmt(summary.monthlyExpense)}</p>
+            <p className="text-2xl font-bold text-brand-danger" title={`-${formatCurrency(summary.monthlyExpense)}`}>-{fmt(summary.monthlyExpense)}</p>
           </div>
           <div className="p-4 rounded-[20px] bg-brand-danger/10 text-brand-danger">
             <TrendingDown size={24} />
@@ -260,9 +269,11 @@ export function MovementsView({
               className="pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:border-brand-primary outline-none transition-all w-64"
             />
           </div>
-          <button onClick={onCreateMovement} className="bg-brand-dark text-white p-3 rounded-2xl hover:bg-brand-accent transition-all">
-            <Plus size={20} />
-          </button>
+          {canWrite(user?.role) && (
+            <button onClick={onCreateMovement} className="bg-brand-dark text-white p-3 rounded-2xl hover:bg-brand-accent transition-all">
+              <Plus size={20} />
+            </button>
+          )}
         </div>
 
         {/* Filter panel */}

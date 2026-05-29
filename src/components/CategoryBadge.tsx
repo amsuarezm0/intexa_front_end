@@ -1,5 +1,5 @@
-import { cn } from '../lib/utils';
 import { getCategoryColor } from '../lib/colors';
+import { cn } from '../lib/utils';
 
 interface Props {
   category: string;

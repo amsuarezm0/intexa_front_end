@@ -125,7 +125,7 @@ function navDate(d: Date, period: Period, dir: 1 | -1): Date {
 }
 
 type FilterType   = 'Todos' | 'Ingreso' | 'Egreso';
-type FilterStatus = 'Todos' | 'Completado' | 'Pendiente' | 'Cancelado';
+type FilterStatus = 'Todos' | 'Completado' | 'Pendiente' | 'Anulado';
 type FilterSource = 'Todos' | 'Siigo' | 'Manual';
 type FilterRecord = 'Todos' | 'Movimiento' | 'Proyección';
 
@@ -206,7 +206,7 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
 
     // Cash received to date (Completado: full amount; Parcial: amount − balance)
     const balance = allTxs
-      .filter(t => !t.isProjection && t.status !== 'Cancelado')
+      .filter(t => !t.isProjection && t.status !== 'Anulado')
       .reduce((sum, t) => {
         const r = t.status === 'Completado' ? t.amount
                 : t.status === 'Parcial'    ? t.amount - (t.balance ?? 0)
@@ -530,7 +530,7 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
             <div className="space-y-1.5">
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Estado</p>
               <div className="flex gap-1.5">
-                {(['Todos', 'Completado', 'Pendiente', 'Cancelado'] as FilterStatus[]).map(v => (
+                {(['Todos', 'Completado', 'Pendiente', 'Anulado'] as FilterStatus[]).map(v => (
                   <button
                     key={v}
                     onClick={() => setFilterStatus(v)}

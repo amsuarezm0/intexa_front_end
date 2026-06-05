@@ -108,7 +108,7 @@ Los valores compactos muestran el valor completo con `formatCurrency` al hacer h
 |---|---|---|
 | `Amount` | `float64` | Valor total de la factura |
 | `Balance` | `float64` | Saldo pendiente de pago (Siigo lo actualiza en cada sync) |
-| `Status` | `string` | `Completado` · `Parcial` · `Pendiente` · `Cancelado` |
+| `Status` | `string` | `Completado` · `Parcial` · `Pendiente` · `Anulado` |
 | `ParentID` | `string` | UUID del padre; presente solo en cuotas de plan de pagos |
 | `IsProjection` | `bool` | `true` en cuotas de plan de pagos y proyecciones manuales |
 
@@ -426,7 +426,7 @@ Tras guardar, se escribe `localStorage["arca_saldo_updated_date"] = hoy`.
 ### Secciones UI
 - **Métricas** — Balance Total (color según signo), Ingresos del Mes, Egresos del Mes
 - **Tabla paginada** — Fecha, Descripción, Categoría, Tipo, Monto + saldo pendiente, Estado
-- **Panel de filtros** — Tipo (Ingreso/Egreso), Estado (Completado/Parcial/Pendiente/Cancelado)
+- **Panel de filtros** — Tipo (Ingreso/Egreso), Estado (Completado/Parcial/Pendiente/Anulado)
 - **Buscador** con debounce de 400 ms
 - **Paginación** — hasta 5 botones de página + anterior/siguiente
 - **Exportación XLSX** — libro con 8 columnas formateadas
@@ -483,7 +483,7 @@ title = "Saldo pendiente: " + formatCurrency(tx.balance)
 | Completado | Verde (`brand-success`) |
 | Parcial | Ámbar (`brand-warning`) |
 | Pendiente | Azul (`brand-primary`) |
-| Cancelado | Rojo (`brand-danger`) |
+| Anulado | Rojo (`brand-danger`) |
 
 ### 3.5 Paginación
 

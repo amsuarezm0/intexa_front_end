@@ -32,7 +32,8 @@ interface MainLayoutProps {
 export function MainLayout({ children, currentView, onNavigate, onLogout, onSyncSuccess, user }: MainLayoutProps) {
   const [syncState, setSyncState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [showSyncMenu, setShowSyncMenu] = useState(false);
-  const [bootstrapDate, setBootstrapDate] = useState('');
+  const getToday = () => new Date().toISOString().split('T')[0];
+  const [bootstrapDate, setBootstrapDate] = useState(getToday);
   const [showBootstrapInput, setShowBootstrapInput] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -210,13 +211,6 @@ export function MainLayout({ children, currentView, onNavigate, onLogout, onSync
                 <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 z-[200] overflow-hidden">
                   <div className="p-1">
                     <button
-                      onClick={() => handleSyncSiigo('incremental')}
-                      className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 rounded-xl transition-colors"
-                    >
-                      <p className="font-bold text-slate-900">Incremental</p>
-                      <p className="text-xs text-slate-400 mt-0.5">Últimos 90 días · automático diario</p>
-                    </button>
-                    <button
                       onClick={() => handleSyncSiigo('reconcile')}
                       className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 rounded-xl transition-colors"
                     >
@@ -224,10 +218,10 @@ export function MainLayout({ children, currentView, onNavigate, onLogout, onSync
                       <p className="text-xs text-slate-400 mt-0.5">Desde el registro más antiguo · mensual</p>
                     </button>
                     <button
-                      onClick={() => { setShowBootstrapInput(v => !v); }}
+                      onClick={() => { setBootstrapDate(getToday()); setShowBootstrapInput(v => !v); }}
                       className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 rounded-xl transition-colors"
                     >
-                      <p className="font-bold text-slate-900">Carga inicial</p>
+                      <p className="font-bold text-slate-900">Desde un periodo específico</p>
                       <p className="text-xs text-slate-400 mt-0.5">Importar historial completo desde fecha</p>
                     </button>
                     {showBootstrapInput && (
@@ -235,6 +229,7 @@ export function MainLayout({ children, currentView, onNavigate, onLogout, onSync
                         <input
                           type="date"
                           value={bootstrapDate}
+                          max={getToday()}
                           onChange={e => setBootstrapDate(e.target.value)}
                           className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
                         />
@@ -243,7 +238,7 @@ export function MainLayout({ children, currentView, onNavigate, onLogout, onSync
                           disabled={!bootstrapDate}
                           className="w-full bg-brand-primary text-white py-2 rounded-xl text-sm font-bold disabled:opacity-40 hover:bg-brand-accent transition-colors"
                         >
-                          Importar desde {bootstrapDate || '—'}
+                          Importar {bootstrapDate} → hoy
                         </button>
                       </div>
                     )}

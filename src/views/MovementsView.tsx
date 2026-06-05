@@ -22,10 +22,10 @@ import { cn } from '../lib/utils';
 import { transactionsService,type Transaction,type TransactionSummary } from '../services';
 
 const TYPE_OPTIONS = ['Ingreso', 'Egreso'] as const;
-const STATUS_OPTIONS = ['Completado', 'Parcial', 'Pendiente', 'Cancelado'] as const;
+const STATUS_OPTIONS = ['Completado', 'Parcial', 'Pendiente', 'Anulado'] as const;
 
 type TypeFilter = '' | 'Ingreso' | 'Egreso';
-type StatusFilter = '' | 'Completado' | 'Parcial' | 'Pendiente' | 'Cancelado';
+type StatusFilter = '' | 'Completado' | 'Parcial' | 'Pendiente' | 'Anulado';
 
 async function exportXLSX(transactions: Transaction[], formatCurrency: (n: number) => string) {
   const wb = new ExcelJS.Workbook();

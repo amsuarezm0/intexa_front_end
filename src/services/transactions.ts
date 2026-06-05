@@ -8,7 +8,7 @@ export interface Transaction {
   type: 'Ingreso' | 'Egreso';
   amount: number;
   balance?: number;
-  status: 'Completado' | 'Parcial' | 'Pendiente' | 'Cancelado';
+  status: 'Completado' | 'Parcial' | 'Pendiente' | 'Anulado';
   reference?: string;
   detail?: string;
   source: 'Siigo' | 'Manual';
@@ -38,7 +38,7 @@ export interface CreateTransactionInput {
   category: string;
   type: 'Ingreso' | 'Egreso';
   amount: number;
-  status: 'Completado' | 'Pendiente' | 'Cancelado';
+  status: 'Completado' | 'Pendiente' | 'Anulado';
   reference?: string;
   source: 'Siigo' | 'Manual';
   isProjection: boolean;

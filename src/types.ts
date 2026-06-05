@@ -5,7 +5,7 @@ export interface Transaction {
   category: string;
   type: 'Ingreso' | 'Egreso';
   amount: number;
-  status: 'Completado' | 'Pendiente' | 'Cancelado';
+  status: 'Completado' | 'Pendiente' | 'Anulado';
   reference?: string;
 }
 

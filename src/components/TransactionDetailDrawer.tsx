@@ -30,7 +30,7 @@ export function TransactionDetailDrawer({ transaction, isLoading, onClose, onDel
   const [editAmount, setEditAmount]       = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editCategory, setEditCategory]   = useState('');
-  const [editStatus, setEditStatus]       = useState<'Completado' | 'Pendiente' | 'Cancelado'>('Pendiente');
+  const [editStatus, setEditStatus]       = useState<'Completado' | 'Pendiente' | 'Anulado'>('Pendiente');
 
   const open = !!(transaction || isLoading);
   const canEdit = transaction && transaction.source !== 'Siigo' && canWrite;
@@ -54,7 +54,7 @@ export function TransactionDetailDrawer({ transaction, isLoading, onClose, onDel
     setEditAmount(String(transaction.amount));
     setEditDescription(transaction.description);
     setEditCategory(transaction.category);
-    setEditStatus(transaction.status as 'Completado' | 'Pendiente' | 'Cancelado');
+    setEditStatus(transaction.status as 'Completado' | 'Pendiente' | 'Anulado');
     setEditing(true);
   }
 
@@ -224,7 +224,7 @@ export function TransactionDetailDrawer({ transaction, isLoading, onClose, onDel
                       <div className="space-y-2">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Estado</p>
                         <div className="flex gap-2">
-                          {(['Completado', 'Pendiente', 'Cancelado'] as const).map(s => (
+                          {(['Completado', 'Pendiente', 'Anulado'] as const).map(s => (
                             <button
                               key={s}
                               onClick={() => setEditStatus(s)}

@@ -1,8 +1,8 @@
 import ExcelJS from 'exceljs';
-import { ChevronRight,Download,Sparkles,TrendingDown,TrendingUp } from 'lucide-react';
+import { AlertTriangle,ChevronRight,Download,Sparkles,TrendingDown,TrendingUp,X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useEffect,useState } from 'react';
-import { Bar,BarChart,CartesianGrid,ResponsiveContainer,Tooltip,XAxis,YAxis } from 'recharts';
+import { Bar,CartesianGrid,ComposedChart,Line,ReferenceLine,ResponsiveContainer,Tooltip,XAxis,YAxis } from 'recharts';
 import { Skeleton,SkeletonCard,SkeletonChart } from '../components/Skeleton';
 import { useSettings } from '../contexts/SettingsContext';
 import { cn } from '../lib/utils';
@@ -27,9 +27,15 @@ const CHART_SUBTITLES: Record<ReportPeriod, string> = {
 };
 
 const CATEGORY_WINDOW: Record<ReportPeriod, string> = {
-  mensual: 'Mes en curso vs. mes anterior',
+  mensual: 'Últimos 6 meses vs. 6 meses anteriores',
   trimestral: 'Trimestre en curso vs. trimestre anterior',
   anual: 'Año en curso (YTD) vs. mismo período año anterior',
+};
+
+const BREAKDOWN_SUBTITLE: Record<ReportPeriod, string> = {
+  mensual: 'Egresos — Últimos 6 meses',
+  trimestral: 'Egresos — Trimestre en curso',
+  anual: 'Egresos — Año en curso (YTD)',
 };
 
 const PROJECTION_META: Record<ReportPeriod, { title: string; desc: string }> = {
@@ -123,6 +129,7 @@ export function ReportsView() {
   const [data, setData] = useState<ReportSummary>({ cashFlowChart: [], categoryBreakdown: [], categoryTable: [], annual: { projectedClose: 0, probability: 0, insightText: '—' }, complianceRate: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
+  const [showInsight, setShowInsight] = useState(false);
   const [error, setError] = useState('');
   const [period, setPeriod] = useState<ReportPeriod>('mensual');
 
@@ -189,7 +196,7 @@ export function ReportsView() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 bg-white p-5 sm:p-10 rounded-3xl sm:rounded-[48px] border border-slate-100 card-shadow">
+        <div className="lg:col-span-2 bg-white p-5 sm:p-10 rounded-3xl sm:rounded-[48px] border border-slate-100 card-shadow flex flex-col">
           <div className="flex justify-between items-start mb-12">
             <div>
               <h3 className="text-2xl font-black text-slate-900 tracking-tight">{CHART_TITLES[period]}</h3>
@@ -198,14 +205,16 @@ export function ReportsView() {
             <div className="flex gap-6">
               <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-brand-success" /><span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">INGRESOS</span></div>
               <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-brand-danger" /><span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">EGRESOS</span></div>
+              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-brand-primary" /><span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">NETO</span></div>
             </div>
           </div>
-          <div className="h-[300px]">
+          <div className="flex-1 min-h-[200px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data.cashFlowChart}>
+              <ComposedChart data={data.cashFlowChart.map(p => ({ ...p, net: p.ingresos - p.egresos }))} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} barGap={0}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 800 }} dy={15} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 800 }} dy={8} />
                 <YAxis hide />
+                <ReferenceLine y={0} stroke="#CBD5E1" strokeDasharray="4 4" />
                 <Tooltip
                   cursor={{ fill: '#F1F5F9' }}
                   contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}
@@ -213,16 +222,18 @@ export function ReportsView() {
                 />
                 <Bar dataKey="ingresos" name="Ingresos" fill="#10B981" radius={[8, 8, 0, 0]} barSize={24} />
                 <Bar dataKey="egresos" name="Egresos" fill="#EF4444" radius={[8, 8, 0, 0]} barSize={24} />
-              </BarChart>
+                <Line dataKey="net" name="Neto" type="monotone" stroke="#6366F1" strokeWidth={2.5} dot={{ r: 4, fill: '#6366F1', strokeWidth: 0 }} activeDot={{ r: 6 }} />
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         <div className="bg-white p-5 sm:p-10 rounded-3xl sm:rounded-[48px] border border-slate-100 card-shadow">
-          <h3 className="text-2xl font-black text-slate-900 tracking-tight mb-8">Gastos por Categoría</h3>
+          <h3 className="text-2xl font-black text-slate-900 tracking-tight">Gastos por Categoría</h3>
+          <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-tight mb-8">{BREAKDOWN_SUBTITLE[period]}</p>
           <div className="space-y-8">
             {data.categoryBreakdown.map((cat, i) => {
-              const colors = ['bg-brand-primary', 'bg-brand-success', 'bg-blue-400', 'bg-brand-danger'];
+              const colors = ['bg-brand-primary', 'bg-brand-success', 'bg-blue-400', 'bg-brand-danger', 'bg-amber-400', 'bg-purple-400', 'bg-cyan-400', 'bg-rose-400', 'bg-teal-400', 'bg-orange-400'];
               return (
                 <div key={i} className="space-y-3">
                   <div className="flex justify-between text-[11px] font-bold text-slate-400 uppercase tracking-widest">
@@ -286,7 +297,7 @@ export function ReportsView() {
               <h3 className="text-3xl font-black tracking-tight leading-tight">Insight de Eficiencia</h3>
               <p className="text-base font-semibold opacity-60 leading-relaxed">{data.annual.insightText}</p>
             </div>
-            <button className="mt-12 bg-white text-brand-dark py-4 px-8 rounded-2xl font-black uppercase text-xs tracking-widest self-start hover:scale-[1.02] transition-all">Ver Recomendación</button>
+            <button onClick={() => setShowInsight(true)} className="mt-12 bg-white text-brand-dark py-4 px-8 rounded-2xl font-black uppercase text-xs tracking-widest self-start hover:scale-[1.02] transition-all">Ver Recomendación</button>
           </div>
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/[0.03] rounded-full -mr-20 -mt-20 group-hover:scale-125 transition-transform duration-1000" />
         </div>
@@ -303,13 +314,94 @@ export function ReportsView() {
                 <p className="text-2xl font-black text-slate-900" title={formatCurrency(data.annual.projectedClose)}>{formatCompact(data.annual.projectedClose)}</p>
               </div>
               <div className="p-6 bg-slate-50 rounded-[32px]">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">PROBABILIDAD</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">TASA DE ÉXITO HISTÓRICO</p>
                 <p className="text-2xl font-black text-brand-success">{data.annual.probability}%</p>
               </div>
             </div>
           </div>
         </div>
       </div>
+      {showInsight && (() => {
+        const alerts = (data.categoryTable ?? []).filter(r => !r.isPositive && r.prev > 0).slice(0, 4);
+        const isHealthy = data.annual.probability >= 60;
+        return (
+          <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-4" onClick={() => setShowInsight(false)}>
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 24 }}
+              onClick={e => e.stopPropagation()}
+              className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden"
+            >
+              <div className="bg-brand-dark p-8 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-48 h-48 bg-white/[0.04] rounded-full -mr-16 -mt-16" />
+                <div className="relative z-10 flex items-start justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-white/10 rounded-2xl flex items-center justify-center flex-shrink-0">
+                      <Sparkles size={20} className="text-white" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">Eficiencia Financiera</p>
+                      <h2 className="text-xl font-black text-white tracking-tight">Recomendación</h2>
+                    </div>
+                  </div>
+                  <button onClick={() => setShowInsight(false)} className="text-white/40 hover:text-white transition-colors mt-0.5">
+                    <X size={20} />
+                  </button>
+                </div>
+                <p className="relative z-10 mt-5 text-sm font-semibold text-white/70 leading-relaxed">{data.annual.insightText}</p>
+              </div>
+
+              <div className="p-8 space-y-6">
+                {alerts.length > 0 ? (
+                  <div className="space-y-3">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Categorías con Sobregasto</p>
+                    {alerts.map((row, i) => (
+                      <div key={i} className="flex items-center justify-between bg-brand-danger/5 border border-brand-danger/10 rounded-2xl px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <AlertTriangle size={16} className="text-brand-danger flex-shrink-0" />
+                          <span className="text-sm font-bold text-slate-800">{row.category}</span>
+                        </div>
+                        <span className="text-sm font-black text-brand-danger">+{row.change.toFixed(1)}%</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 bg-brand-success/5 border border-brand-success/10 rounded-2xl px-5 py-4">
+                    <TrendingDown size={16} className="text-brand-success" />
+                    <span className="text-sm font-bold text-slate-700">Todos los egresos dentro de rangos previos.</span>
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Acciones Sugeridas</p>
+                  <ul className="space-y-2">
+                    {!isHealthy && <li className="flex items-start gap-2 text-sm text-slate-600 font-medium"><span className="text-brand-danger mt-0.5">•</span>Revisa los egresos con mayor variación positiva y establece límites por categoría.</li>}
+                    {alerts.length > 0 && <li className="flex items-start gap-2 text-sm text-slate-600 font-medium"><span className="text-brand-primary mt-0.5">•</span>Negocia con proveedores en las categorías de sobregasto para reducir costos recurrentes.</li>}
+                    <li className="flex items-start gap-2 text-sm text-slate-600 font-medium"><span className="text-brand-primary mt-0.5">•</span>Mantén un fondo de contingencia equivalente a 2 meses de egresos promedio.</li>
+                    {isHealthy && <li className="flex items-start gap-2 text-sm text-slate-600 font-medium"><span className="text-brand-success mt-0.5">•</span>Flujo positivo sostenido — considera reinvertir el excedente en proyecciones de crecimiento.</li>}
+                  </ul>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 pt-2">
+                  <div className="bg-slate-50 rounded-2xl p-4 text-center">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Tasa de Éxito Histórico</p>
+                    <p className={cn("text-2xl font-black", data.annual.probability >= 60 ? 'text-brand-success' : 'text-brand-danger')}>{data.annual.probability}%</p>
+                  </div>
+                  <div className="bg-slate-50 rounded-2xl p-4 text-center">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Categorías en Alerta</p>
+                    <p className={cn("text-2xl font-black", alerts.length === 0 ? 'text-brand-success' : 'text-brand-danger')}>{alerts.length}</p>
+                  </div>
+                </div>
+
+                <button onClick={() => setShowInsight(false)} className="w-full bg-brand-dark text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-brand-accent transition-all">
+                  Cerrar
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        );
+      })()}
     </motion.div>
   );
 }

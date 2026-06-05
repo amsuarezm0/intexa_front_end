@@ -3,29 +3,24 @@ import {
 ArrowDownLeft,
 ArrowUpRight,
 Building2,
-ChevronLeft,ChevronRight,
 Download,Filter,Plus,Search,
 TrendingDown,
 TrendingUp,
-X,
 } from 'lucide-react';
-import { AnimatePresence,motion } from 'motion/react';
-import { useCallback,useEffect,useState } from 'react';
+import { motion } from 'motion/react';
+import { useCallback,useEffect,useRef,useState } from 'react';
 import type { LoggedInUser } from '../App';
 import { CategoryBadge } from '../components/CategoryBadge';
 import { Skeleton,SkeletonCard } from '../components/Skeleton';
 import { StatusBadge } from '../components/StatusBadge';
+import { Pagination } from '../components/Pagination';
 import { TransactionDetailDrawer } from '../components/TransactionDetailDrawer';
+import { TransactionFilters, type TxFilters, type TxTypeFilter, type TxStatusFilter, type TxSourceFilter, type TxRecordFilter } from '../components/TransactionFilters';
 import { useSettings } from '../contexts/SettingsContext';
 import { canWrite } from '../lib/roles';
 import { cn } from '../lib/utils';
 import { transactionsService,type Transaction,type TransactionSummary } from '../services';
 
-const TYPE_OPTIONS = ['Ingreso', 'Egreso'] as const;
-const STATUS_OPTIONS = ['Completado', 'Parcial', 'Pendiente', 'Anulado'] as const;
-
-type TypeFilter = '' | 'Ingreso' | 'Egreso';
-type StatusFilter = '' | 'Completado' | 'Parcial' | 'Pendiente' | 'Anulado';
 
 async function exportXLSX(transactions: Transaction[], formatCurrency: (n: number) => string) {
   const wb = new ExcelJS.Workbook();
@@ -79,16 +74,17 @@ export function MovementsView({
   user?: LoggedInUser | null;
 }) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [summary, setSummary] = useState<TransactionSummary>({ totalBalance: 0, monthlyIncome: 0, monthlyExpense: 0 });
+  const [summary, setSummary] = useState<TransactionSummary>({ totalBalance: 0, totalIncome: 0, totalExpense: 0, monthlyIncome: 0, monthlyExpense: 0 });
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>('');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('');
+  const [filters, setFilters] = useState<TxFilters>({ type: '', status: '', source: '', record: '', dateFrom: '', dateTo: '' });
+  const { type: typeFilter, status: statusFilter, source: sourceFilter, record: recordFilter, dateFrom = '', dateTo = '' } = filters;
   const [showFilters, setShowFilters] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState('');
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
@@ -96,12 +92,13 @@ export function MovementsView({
 
   const { formatCurrency, formatCompact } = useSettings();
 
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
+  const fetchData = useCallback(async (initial = false) => {
+    if (initial) setIsInitialLoading(true);
+    else setIsFetching(true);
     setError('');
     try {
       const [listRes, summaryRes] = await Promise.all([
-        transactionsService.list({ page, limit: 10, search, type: typeFilter || undefined, status: statusFilter || undefined }),
+        transactionsService.list({ page, limit: 10, search, type: typeFilter || undefined, status: statusFilter || undefined, source: sourceFilter || undefined, isProjection: recordFilter === 'Proyección' ? true : recordFilter === 'Movimiento' ? false : undefined, dateFrom: dateFrom || undefined, dateTo: dateTo || undefined }),
         transactionsService.summary(),
       ]);
       setTransactions(listRes.data);
@@ -111,11 +108,16 @@ export function MovementsView({
     } catch {
       setError('No se pudo cargar los movimientos.');
     } finally {
-      setIsLoading(false);
+      setIsInitialLoading(false);
+      setIsFetching(false);
     }
-  }, [page, search, typeFilter, statusFilter]);
+  }, [page, search, filters]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  const hasFetched = useRef(false);
+  useEffect(() => {
+    fetchData(!hasFetched.current);
+    hasFetched.current = true;
+  }, [fetchData]);
 
   useEffect(() => {
     const t = setTimeout(() => { setSearch(searchInput); setPage(1); }, 400);
@@ -139,6 +141,10 @@ export function MovementsView({
         search,
         type: typeFilter || undefined,
         status: statusFilter || undefined,
+        source: sourceFilter || undefined,
+        isProjection: recordFilter === 'Proyección' ? true : recordFilter === 'Movimiento' ? false : undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
       });
       await exportXLSX(res.data, formatCurrency);
     } catch {
@@ -148,16 +154,13 @@ export function MovementsView({
     }
   };
 
-  const activeFilterCount = (typeFilter ? 1 : 0) + (statusFilter ? 1 : 0);
+  const activeFilterCount = (typeFilter ? 1 : 0) + (statusFilter ? 1 : 0) + (sourceFilter ? 1 : 0) + (recordFilter ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
 
-  const clearFilters = () => {
-    setTypeFilter('');
-    setStatusFilter('');
-    setPage(1);
-  };
+  const clearFilters = () => { setFilters({ type: '', status: '', source: '', record: '', dateFrom: '', dateTo: '' }); setPage(1); };
+  const handleFilterChange = (next: Partial<TxFilters>) => { setFilters(f => ({ ...f, ...next })); setPage(1); };
 
   if (error) return <div className="p-8 text-brand-danger font-semibold">{error}</div>;
-  if (isLoading) {
+  if (isInitialLoading) {
     return (
       <div className="space-y-8">
         <div className="flex justify-between items-end">
@@ -233,22 +236,22 @@ export function MovementsView({
           </div>
         </div>
 
-        {/* Ingresos Mes */}
+        {/* Ingresos Totales */}
         <div className="bg-white p-6 rounded-[32px] border border-slate-100 card-shadow flex justify-between items-center cursor-default">
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">INGRESOS MES</p>
-            <p className="text-2xl font-bold text-brand-success" title={`+${formatCurrency(summary.monthlyIncome)}`}>+{fmt(summary.monthlyIncome)}</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">INGRESOS TOTALES</p>
+            <p className="text-2xl font-bold text-brand-success" title={`+${formatCurrency(summary.totalIncome)}`}>+{fmt(summary.totalIncome)}</p>
           </div>
           <div className="p-4 rounded-[20px] bg-brand-success/10 text-brand-success">
             <TrendingUp size={24} />
           </div>
         </div>
 
-        {/* Egresos Mes */}
+        {/* Egresos Totales */}
         <div className="bg-white p-6 rounded-[32px] border border-slate-100 card-shadow flex justify-between items-center cursor-default">
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">EGRESOS MES</p>
-            <p className="text-2xl font-bold text-brand-danger" title={`-${formatCurrency(summary.monthlyExpense)}`}>-{fmt(summary.monthlyExpense)}</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">EGRESOS TOTALES</p>
+            <p className="text-2xl font-bold text-brand-danger" title={`-${formatCurrency(summary.totalExpense)}`}>-{fmt(summary.totalExpense)}</p>
           </div>
           <div className="p-4 rounded-[20px] bg-brand-danger/10 text-brand-danger">
             <TrendingDown size={24} />
@@ -256,7 +259,7 @@ export function MovementsView({
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl sm:rounded-[40px] border border-slate-100 card-shadow overflow-hidden">
+      <div className={cn("bg-white rounded-3xl sm:rounded-[40px] border border-slate-100 card-shadow overflow-hidden transition-opacity", isFetching && "opacity-60 pointer-events-none")}>
         {/* Search + action row */}
         <div className="p-4 sm:p-8 border-b border-slate-100 flex justify-between items-center gap-4">
           <div className="relative">
@@ -276,99 +279,13 @@ export function MovementsView({
           )}
         </div>
 
-        {/* Filter panel */}
-        <AnimatePresence>
-          {showFilters && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden border-b border-slate-100"
-            >
-              <div className="px-8 py-6 flex flex-wrap items-center gap-6">
-                {/* Type filter */}
-                <div className="flex items-center gap-3">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tipo</span>
-                  <div className="flex gap-2">
-                    {TYPE_OPTIONS.map(t => (
-                      <button
-                        key={t}
-                        onClick={() => { setTypeFilter(typeFilter === t ? '' : t); setPage(1); }}
-                        className={cn(
-                          "px-3 py-1.5 rounded-lg text-xs font-bold border transition-all",
-                          typeFilter === t
-                            ? t === 'Ingreso'
-                              ? "bg-brand-success text-white border-brand-success"
-                              : "bg-brand-danger text-white border-brand-danger"
-                            : "bg-slate-50 text-slate-500 border-slate-200 hover:border-slate-300"
-                        )}
-                      >{t}</button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Status filter */}
-                <div className="flex items-center gap-3">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Estado</span>
-                  <div className="flex gap-2">
-                    {STATUS_OPTIONS.map(s => (
-                      <button
-                        key={s}
-                        onClick={() => { setStatusFilter(statusFilter === s ? '' : s); setPage(1); }}
-                        className={cn(
-                          "px-3 py-1.5 rounded-lg text-xs font-bold border transition-all",
-                          statusFilter === s
-                            ? s === 'Completado' ? "bg-brand-success text-white border-brand-success"
-                              : s === 'Parcial'   ? "bg-brand-warning text-white border-brand-warning"
-                              : s === 'Pendiente' ? "bg-brand-primary text-white border-brand-primary"
-                              : "bg-brand-danger text-white border-brand-danger"
-                            : "bg-slate-50 text-slate-500 border-slate-200 hover:border-slate-300"
-                        )}
-                      >{s}</button>
-                    ))}
-                  </div>
-                </div>
-
-                {activeFilterCount > 0 && (
-                  <button
-                    onClick={clearFilters}
-                    className="flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-brand-danger transition-colors ml-auto"
-                  >
-                    <X size={14} />Limpiar filtros
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Active filter chips */}
-        {!showFilters && activeFilterCount > 0 && (
-          <div className="px-8 py-3 border-b border-slate-100 flex items-center gap-2">
-            {typeFilter && (
-              <span className={cn(
-                "flex items-center gap-1.5 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest",
-                typeFilter === 'Ingreso' ? "bg-brand-success/10 text-brand-success" : "bg-brand-danger/10 text-brand-danger"
-              )}>
-                {typeFilter}
-                <button onClick={() => { setTypeFilter(''); setPage(1); }}><X size={10} /></button>
-              </span>
-            )}
-            {statusFilter && (
-              <span className={cn(
-                "flex items-center gap-1.5 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest",
-                statusFilter === 'Completado' ? "bg-brand-success/10 text-brand-success"
-                  : statusFilter === 'Parcial'   ? "bg-brand-warning/10 text-brand-warning"
-                  : statusFilter === 'Pendiente' ? "bg-brand-primary/10 text-brand-primary"
-                  : "bg-brand-danger/10 text-brand-danger"
-              )}>
-                {statusFilter}
-                <button onClick={() => { setStatusFilter(''); setPage(1); }}><X size={10} /></button>
-              </span>
-            )}
-          </div>
-        )}
+        <TransactionFilters
+          show={showFilters}
+          filters={filters}
+          showDateFilter
+          onChange={handleFilterChange}
+          onClear={clearFilters}
+        />
 
         <div className="overflow-x-auto">
           <table className="w-full text-left">
@@ -380,7 +297,7 @@ export function MovementsView({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {isLoading
+              {isFetching && transactions.length === 0
                 ? Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i}><td colSpan={6} className="px-8 py-4"><Skeleton className="h-6 w-full" /></td></tr>
                   ))
@@ -426,22 +343,13 @@ export function MovementsView({
           </table>
         </div>
 
-        <div className="p-4 sm:p-8 border-t border-slate-100 flex items-center justify-between">
-          <span className="text-sm font-semibold text-slate-400">Mostrando {transactions.length} de {total} movimientos</span>
-          <div className="flex items-center gap-2">
-            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="p-2 text-slate-400 hover:text-brand-primary disabled:opacity-30">
-              <ChevronLeft size={20} />
-            </button>
-            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map(p => (
-              <button key={p} onClick={() => setPage(p)} className={cn("w-8 h-8 rounded-lg text-xs font-bold transition-colors", p === page ? "bg-brand-dark text-white" : "text-slate-600 hover:bg-slate-100")}>
-                {p}
-              </button>
-            ))}
-            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="p-2 text-slate-400 hover:text-brand-primary disabled:opacity-30">
-              <ChevronRight size={20} />
-            </button>
-          </div>
-        </div>
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={10}
+          onPage={setPage}
+        />
       </div>
     </motion.div>
     </>

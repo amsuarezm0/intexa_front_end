@@ -1,5 +1,7 @@
-import { AlertTriangle,ArrowDownCircle,ArrowDownLeft,ArrowUpRight,ChevronLeft,ChevronRight,Filter,Plus,TrendingUp,X } from 'lucide-react';
+import { AlertTriangle,ArrowDownCircle,ArrowDownLeft,ArrowUpRight,ChevronLeft,ChevronRight,Filter,Plus,TrendingUp } from 'lucide-react';
+import { Pagination } from '../components/Pagination';
 import { motion } from 'motion/react';
+import { TransactionFilters, type TxFilters } from '../components/TransactionFilters';
 import { useEffect,useMemo,useState } from 'react';
 import { Skeleton,SkeletonCard } from '../components/Skeleton';
 import { StatusBadge } from '../components/StatusBadge';
@@ -7,7 +9,7 @@ import { TransactionDetailDrawer } from '../components/TransactionDetailDrawer';
 import { useSettings } from '../contexts/SettingsContext';
 import { canWrite } from '../lib/roles';
 import { cn } from '../lib/utils';
-import { cashFlowService,transactionsService,type CashFlowSummary,type Transaction } from '../services';
+import { cashFlowService,projectionsService,transactionsService,type CashFlowSummary,type Transaction } from '../services';
 
 type Period = 'day' | 'week' | 'month';
 
@@ -31,7 +33,7 @@ interface ChartPoint { label: string; date: number; ingresos: number; egresos: n
 
 function sumTxs(txs: Transaction[]) {
   const completed = txs.filter(t => !t.isProjection && t.status === 'Completado');
-  const pending   = txs.filter(t => !t.isProjection && t.status === 'Pendiente');
+  const pending   = txs.filter(t => !t.isProjection && (t.status === 'Pendiente' || t.status === 'Parcial'));
   const proj      = txs.filter(t => t.isProjection);
   return {
     ingresos:        completed.filter(t => t.type === 'Ingreso').reduce((s, t) => s + t.amount, 0),
@@ -45,12 +47,11 @@ function sumTxs(txs: Transaction[]) {
 
 function buildChart(txs: Transaction[], period: Period, ref: Date): ChartPoint[] {
   if (period === 'week') {
-    const dow = ref.getDay();
-    const mon = new Date(ref);
-    mon.setDate(ref.getDate() - (dow === 0 ? 6 : dow - 1));
+    const dow    = ref.getDay();
+    const offset = dow === 0 ? 6 : dow - 1;
+    const mon = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate() - offset);
     return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(mon);
-      d.setDate(mon.getDate() + i);
+      const d = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate() - offset + i);
       const day = txs.filter(tx => dateKey(parseTxDate(tx.date)) === dateKey(d));
       return { label: DAYS_ES[d.getDay()], date: d.getDate(), ...sumTxs(day) };
     });
@@ -58,30 +59,26 @@ function buildChart(txs: Transaction[], period: Period, ref: Date): ChartPoint[]
 
   if (period === 'day') {
     const dayTxs = txs.filter(tx => dateKey(parseTxDate(tx.date)) === dateKey(ref));
-    const { ingresos, egresos, proyIngresos, proyEgresos } = sumTxs(dayTxs);
+    const { ingresos, egresos, pendingIngresos, pendingEgresos, proyIngresos, proyEgresos } = sumTxs(dayTxs);
     const realIn  = dayTxs.filter(t => !t.isProjection && t.type === 'Ingreso');
     const realEg  = dayTxs.filter(t => !t.isProjection && t.type === 'Egreso');
     const projAll = dayTxs.filter(t => t.isProjection);
     return [
       {
-        label: 'TOTAL', date: dayTxs.length, ingresos, egresos, proyIngresos, proyEgresos,
-        pendingIngresos: 0,
-        pendingEgresos: 0
+        label: 'TOTAL', date: dayTxs.length,
+        ingresos, egresos, pendingIngresos, pendingEgresos, proyIngresos, proyEgresos,
       },
       {
-        label: 'INGRESOS', date: realIn.length, ingresos, egresos: 0, proyIngresos: 0, proyEgresos: 0,
-        pendingIngresos: 0,
-        pendingEgresos: 0
+        label: 'INGRESOS', date: realIn.length,
+        ingresos, egresos: 0, pendingIngresos, pendingEgresos: 0, proyIngresos, proyEgresos: 0,
       },
       {
-        label: 'EGRESOS', date: realEg.length, ingresos: 0, egresos, proyIngresos: 0, proyEgresos: 0,
-        pendingIngresos: 0,
-        pendingEgresos: 0
+        label: 'EGRESOS', date: realEg.length,
+        ingresos: 0, egresos, pendingIngresos: 0, pendingEgresos, proyIngresos: 0, proyEgresos,
       },
       {
-        label: 'PROYECCIONES', date: projAll.length, ingresos: 0, egresos: 0, proyIngresos, proyEgresos,
-        pendingIngresos: 0,
-        pendingEgresos: 0
+        label: 'PROYECCIONES', date: projAll.length,
+        ingresos: 0, egresos: 0, pendingIngresos: 0, pendingEgresos: 0, proyIngresos, proyEgresos,
       },
     ];
   }
@@ -104,11 +101,10 @@ function periodTitle(period: Period, d: Date): string {
     return `${DAYS_ES[d.getDay()]}, ${d.getDate()} de ${MONTHS_ES[d.getMonth()]} ${d.getFullYear()}`;
   }
   if (period === 'week') {
-    const dow = d.getDay();
-    const mon = new Date(d);
-    mon.setDate(d.getDate() - (dow === 0 ? 6 : dow - 1));
-    const sun = new Date(mon);
-    sun.setDate(mon.getDate() + 6);
+    const dow    = d.getDay();
+    const offset = dow === 0 ? 6 : dow - 1;
+    const mon = new Date(d.getFullYear(), d.getMonth(), d.getDate() - offset);
+    const sun = new Date(d.getFullYear(), d.getMonth(), d.getDate() - offset + 6);
     return mon.getMonth() === sun.getMonth()
       ? `${mon.getDate()} – ${sun.getDate()} ${MONTHS_ES[sun.getMonth()]} ${sun.getFullYear()}`
       : `${mon.getDate()} ${MONTHS_ES[mon.getMonth()]} – ${sun.getDate()} ${MONTHS_ES[sun.getMonth()]} ${sun.getFullYear()}`;
@@ -124,27 +120,23 @@ function navDate(d: Date, period: Period, dir: 1 | -1): Date {
   return next;
 }
 
-type FilterType   = 'Todos' | 'Ingreso' | 'Egreso';
-type FilterStatus = 'Todos' | 'Completado' | 'Pendiente' | 'Anulado';
-type FilterSource = 'Todos' | 'Siigo' | 'Manual';
-type FilterRecord = 'Todos' | 'Movimiento' | 'Proyección';
 
 function getPeriodTxs(txs: Transaction[], period: Period, ref: Date): Transaction[] {
   if (period === 'day') {
     return txs.filter(tx => dateKey(parseTxDate(tx.date)) === dateKey(ref));
   }
   if (period === 'week') {
-    const dow = ref.getDay();
-    const mon = new Date(ref);
-    mon.setDate(ref.getDate() - (dow === 0 ? 6 : dow - 1));
-    const sun = new Date(mon);
-    sun.setDate(mon.getDate() + 6);
+    const dow    = ref.getDay();
+    const offset = dow === 0 ? 6 : dow - 1;
+    // Use 3-arg Date constructor so boundaries are always at midnight, not ref's wall-clock time
+    const mon = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate() - offset);
+    const sun = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate() - offset + 6);
     return txs.filter(tx => {
       const d = parseTxDate(tx.date);
       return d >= mon && d <= sun;
     });
   }
-  // month
+  // month — 3-arg constructor already gives midnight for both boundaries
   const start = new Date(ref.getFullYear(), ref.getMonth(), 1);
   const end   = new Date(ref.getFullYear(), ref.getMonth() + 1, 0);
   return txs.filter(tx => {
@@ -155,26 +147,29 @@ function getPeriodTxs(txs: Transaction[], period: Period, ref: Date): Transactio
 
 export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { onCreateMovement?: () => void; onCreateProjection?: () => void; user?: import('../App').LoggedInUser | null }) {
   const [summary, setSummary] = useState<CashFlowSummary>({ days: [], projectedBalance: 0, projectedChange: 0, alerts: [] });
+  const [proj30, setProj30] = useState(0);
   const [allTxs, setAllTxs] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [period, setPeriod] = useState<Period>('week');
   const [currentDate, setCurrentDate] = useState(() => new Date());
 
-  const [showFilters, setShowFilters]     = useState(false);
-  const [filterType, setFilterType]       = useState<FilterType>('Todos');
-  const [filterStatus, setFilterStatus]   = useState<FilterStatus>('Todos');
-  const [filterSource, setFilterSource]   = useState<FilterSource>('Todos');
-  const [filterRecord, setFilterRecord]   = useState<FilterRecord>('Todos');
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState<TxFilters>({ type: '', status: '', source: '', record: '' });
+  const [txPage, setTxPage] = useState(1);
+  const TX_PAGE_SIZE = 10;
+  const { type: filterType, status: filterStatus, source: filterSource, record: filterRecord } = filters;
   const [selectedTx, setSelectedTx]      = useState<Transaction | null>(null);
 
   useEffect(() => {
     Promise.all([
       cashFlowService.getSummary(),
       transactionsService.list({ limit: 1000 }),
-    ]).then(([s, all]) => {
+      projectionsService.getSummary(30),
+    ]).then(([s, all, p30]) => {
       setSummary(prev => ({ ...prev, ...(s ?? {}) }));
       setAllTxs(all.data ?? []);
+      setProj30(p30?.estimatedBalance ?? 0);
     })
     .catch(() => setError('No se pudo cargar el flujo de caja.'))
     .finally(() => setIsLoading(false));
@@ -189,41 +184,47 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
 
   const filteredTxs = useMemo(() => {
     return periodTxs.filter(tx => {
-      if (filterType   !== 'Todos' && tx.type   !== filterType)   return false;
-      if (filterStatus !== 'Todos' && tx.status  !== filterStatus) return false;
-      if (filterSource !== 'Todos' && tx.source  !== filterSource) return false;
+      if (filterType   && tx.type   !== filterType)   return false;
+      if (filterStatus && tx.status !== filterStatus) return false;
+      if (filterSource && tx.source !== filterSource) return false;
       if (filterRecord === 'Movimiento'  && tx.isProjection)  return false;
       if (filterRecord === 'Proyección'  && !tx.isProjection) return false;
       return true;
     });
   }, [periodTxs, filterType, filterStatus, filterSource, filterRecord]);
 
-  const activeFilters = (filterType !== 'Todos' ? 1 : 0) + (filterStatus !== 'Todos' ? 1 : 0) + (filterSource !== 'Todos' ? 1 : 0) + (filterRecord !== 'Todos' ? 1 : 0);
+  const activeFilters = (filterType ? 1 : 0) + (filterStatus ? 1 : 0) + (filterSource ? 1 : 0) + (filterRecord ? 1 : 0);
 
-  const projectedBalance = useMemo(() => {
-    const horizon = new Date();
-    horizon.setDate(horizon.getDate() + 30);
+  const periodAlerts = useMemo(() => {
+    const alerts = periodTxs
+      .filter(t => !t.isProjection && (t.status === 'Pendiente' || t.status === 'Parcial'))
+      .map(t => {
+        const owed  = t.status === 'Parcial' ? (t.balance ?? 0) : t.amount;
+        const isEg  = t.type === 'Egreso';
+        const title = isEg
+          ? (t.status === 'Parcial' ? 'Pago Parcial' : 'Pago Pendiente')
+          : (t.status === 'Parcial' ? 'Cobro Parcial' : 'Cobro Pendiente');
+        return { id: t.id, type: isEg ? 'danger' : 'success', title, description: t.description, amount: owed, dueDate: t.date } as const;
+      });
+    alerts.sort((a, b) => b.amount - a.amount);
+    return alerts;
+  }, [periodTxs]);
 
-    // Cash received to date (Completado: full amount; Parcial: amount − balance)
-    const balance = allTxs
+  const txTotalPages = Math.max(1, Math.ceil(filteredTxs.length / TX_PAGE_SIZE));
+  const pagedTxs = filteredTxs.slice((txPage - 1) * TX_PAGE_SIZE, txPage * TX_PAGE_SIZE);
+
+  const currentBalance = useMemo(() =>
+    allTxs
       .filter(t => !t.isProjection && t.status !== 'Anulado')
       .reduce((sum, t) => {
         const r = t.status === 'Completado' ? t.amount
                 : t.status === 'Parcial'    ? t.amount - (t.balance ?? 0)
                 : 0;
         return sum + (t.type === 'Ingreso' ? r : -r);
-      }, 0);
+      }, 0),
+  [allTxs]);
 
-    // Expected flows within 30 days: Pendiente = full amount; Parcial = remaining balance
-    const pendingInc = allTxs
-      .filter(t => !t.isProjection && (t.status === 'Pendiente' || t.status === 'Parcial') && t.type === 'Ingreso' && parseTxDate(t.date) <= horizon)
-      .reduce((sum, t) => sum + (t.status === 'Parcial' ? (t.balance ?? 0) : t.amount), 0);
-    const pendingExp = allTxs
-      .filter(t => !t.isProjection && (t.status === 'Pendiente' || t.status === 'Parcial') && t.type === 'Egreso' && parseTxDate(t.date) <= horizon)
-      .reduce((sum, t) => sum + (t.status === 'Parcial' ? (t.balance ?? 0) : t.amount), 0);
-
-    return balance + pendingInc - pendingExp;
-  }, [allTxs]);
+  const projectedBalance = proj30;
 
   const calendarCells = useMemo(() => {
     if (period !== 'month') return [];
@@ -244,12 +245,8 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
 
   const todayKey = dateKey(new Date());
 
-  function clearFilters() {
-    setFilterType('Todos');
-    setFilterStatus('Todos');
-    setFilterSource('Todos');
-    setFilterRecord('Todos');
-  }
+  function clearFilters() { setFilters({ type: '', status: '', source: '', record: '' }); setTxPage(1); }
+  function handleFilterChange(next: Partial<TxFilters>) { setFilters(f => ({ ...f, ...next })); setTxPage(1); }
 
   if (error) return <div className="p-8 text-brand-danger font-semibold">{error}</div>;
   if (isLoading) {
@@ -278,7 +275,7 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
           {PERIOD_ORDER.map(p => (
             <button
               key={p}
-              onClick={() => setPeriod(p)}
+              onClick={() => { setPeriod(p); setTxPage(1); }}
               className={cn("px-6 py-2 text-xs font-bold rounded-xl transition-all", period === p ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600")}
             >
               {PERIOD_LABELS[p]}
@@ -289,9 +286,16 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
 
       <div className="bg-brand-dark p-5 sm:p-6 rounded-3xl sm:rounded-[40px] text-white relative overflow-hidden group">
         <div className="relative z-10 flex items-center justify-between gap-6">
-          <div>
-            <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest">Saldo Proyectado (30d)</p>
-            <p className="text-2xl font-black tracking-tight mt-1">{formatCurrency(projectedBalance)}</p>
+          <div className="flex items-start gap-8">
+            <div>
+              <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest">Balance Total</p>
+              <p className="text-2xl font-black tracking-tight mt-1" title={formatCurrency(currentBalance)}>{formatCurrency(currentBalance)}</p>
+            </div>
+            <div className="w-px self-stretch bg-white/10" />
+            <div>
+              <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest">Saldo Proyectado (30d)</p>
+              <p className="text-2xl font-black tracking-tight mt-1" title={formatCurrency(projectedBalance)}>{formatCurrency(projectedBalance)}</p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <TrendingUp className="text-brand-success" size={20} />
@@ -307,15 +311,15 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
         <div className="bg-white p-4 sm:p-8 rounded-3xl sm:rounded-[40px] border border-slate-100 card-shadow self-start">
           <div className="flex items-center justify-between mb-6 sm:mb-8">
             <div className="flex items-center gap-4">
-              <button onClick={() => setCurrentDate(d => navDate(d, period, -1))} className="p-2 hover:bg-slate-50 rounded-xl transition-colors"><ChevronLeft size={20} /></button>
+              <button onClick={() => { setCurrentDate(d => navDate(d, period, -1)); setTxPage(1); }} className="p-2 hover:bg-slate-50 rounded-xl transition-colors"><ChevronLeft size={20} /></button>
               <h3 className="text-xl font-bold text-slate-900 tracking-tight">{title}</h3>
-              <button onClick={() => setCurrentDate(d => navDate(d, period, 1))} className="p-2 hover:bg-slate-50 rounded-xl transition-colors"><ChevronRight size={20} /></button>
+              <button onClick={() => { setCurrentDate(d => navDate(d, period, 1)); setTxPage(1); }} className="p-2 hover:bg-slate-50 rounded-xl transition-colors"><ChevronRight size={20} /></button>
             </div>
             <div className="flex gap-4">
               <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-brand-success" /><span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">INGRESOS</span></div>
               <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-brand-danger" /><span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">EGRESOS</span></div>
               <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-amber-400" /><span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">PENDIENTE</span></div>
-              <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-orange-400" /><span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">PROYECTADO</span></div>
+              <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-400" /><span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">PROYECTADO</span></div>
             </div>
           </div>
 
@@ -362,10 +366,10 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
                         {pEg > 0 && <span className="text-[10px] font-bold text-amber-500 leading-tight" title={`~-${formatCurrency(pEg)}`}>~-{formatCompact(pEg)}</span>}
                       </>); })()}
                       {projIn > 0 && (
-                        <span className="text-[10px] font-bold text-orange-500 leading-tight" title={`~+${formatCurrency(projIn)}`}>~+{formatCompact(projIn)}</span>
+                        <span className="text-[10px] font-bold text-blue-500 leading-tight" title={`~+${formatCurrency(projIn)}`}>~+{formatCompact(projIn)}</span>
                       )}
                       {projEg > 0 && (
-                        <span className="text-[10px] font-bold text-orange-500 leading-tight" title={`~-${formatCurrency(projEg)}`}>~-{formatCompact(projEg)}</span>
+                        <span className="text-[10px] font-bold text-blue-500 leading-tight" title={`~-${formatCurrency(projEg)}`}>~-{formatCompact(projEg)}</span>
                       )}
                       {cell.txs.length > 1 && (
                         <span className="text-[9px] font-bold text-slate-400 mt-auto">{cell.txs.length} mov.</span>
@@ -379,7 +383,7 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
             /* Day view — compact summary cards */
             <div className="grid grid-cols-4 gap-3">
               {chartData.map((d, i) => {
-                const colors = ['text-slate-600', 'text-brand-success', 'text-brand-danger', 'text-orange-500'];
+                const colors = ['text-slate-600', 'text-brand-success', 'text-brand-danger', 'text-blue-500'];
                 const hasIn  = d.ingresos > 0 || d.pendingIngresos > 0 || d.proyIngresos > 0;
                 const hasEg  = d.egresos > 0  || d.pendingEgresos > 0 || d.proyEgresos > 0;
                 return (
@@ -389,27 +393,19 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
                       <span className="text-[10px] font-bold text-slate-400">{d.date} mov.</span>
                     </div>
                     {hasIn && (
-                      <div className={cn("rounded-xl px-3 py-2",
-                        d.ingresos > 0 ? "bg-brand-success/10" : d.pendingIngresos > 0 ? "bg-amber-50" : "bg-orange-50"
-                      )}>
-                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Ingresos</p>
-                        <p className={cn("text-sm font-extrabold",
-                          d.ingresos > 0 ? "text-brand-success" : d.pendingIngresos > 0 ? "text-amber-500" : "text-orange-500"
-                        )} title={d.ingresos > 0 ? `+${formatCurrency(d.ingresos)}` : d.pendingIngresos > 0 ? `~+${formatCurrency(d.pendingIngresos)}` : `~+${formatCurrency(d.proyIngresos)}`}>
-                          {d.ingresos > 0 ? `+${formatCompact(d.ingresos)}` : d.pendingIngresos > 0 ? `~+${formatCompact(d.pendingIngresos)}` : `~+${formatCompact(d.proyIngresos)}`}
-                        </p>
+                      <div className="rounded-xl px-3 py-2 bg-brand-success/5 space-y-0.5">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Ingresos</p>
+                        {d.ingresos > 0 && <p className="text-sm font-extrabold text-brand-success" title={`+${formatCurrency(d.ingresos)}`}>+{formatCompact(d.ingresos)}</p>}
+                        {d.pendingIngresos > 0 && <p className="text-xs font-bold text-amber-500" title={`~+${formatCurrency(d.pendingIngresos)}`}>~+{formatCompact(d.pendingIngresos)}</p>}
+                        {d.proyIngresos > 0 && <p className="text-xs font-bold text-blue-500" title={`~+${formatCurrency(d.proyIngresos)}`}>~+{formatCompact(d.proyIngresos)}</p>}
                       </div>
                     )}
                     {hasEg && (
-                      <div className={cn("rounded-xl px-3 py-2",
-                        d.egresos > 0 ? "bg-brand-danger/10" : d.pendingEgresos > 0 ? "bg-amber-50" : "bg-orange-50"
-                      )}>
-                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Egresos</p>
-                        <p className={cn("text-sm font-extrabold",
-                          d.egresos > 0 ? "text-brand-danger" : d.pendingEgresos > 0 ? "text-amber-500" : "text-orange-500"
-                        )} title={d.egresos > 0 ? `-${formatCurrency(d.egresos)}` : d.pendingEgresos > 0 ? `~-${formatCurrency(d.pendingEgresos)}` : `~-${formatCurrency(d.proyEgresos)}`}>
-                          {d.egresos > 0 ? `-${formatCompact(d.egresos)}` : d.pendingEgresos > 0 ? `~-${formatCompact(d.pendingEgresos)}` : `~-${formatCompact(d.proyEgresos)}`}
-                        </p>
+                      <div className="rounded-xl px-3 py-2 bg-brand-danger/5 space-y-0.5">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Egresos</p>
+                        {d.egresos > 0 && <p className="text-sm font-extrabold text-brand-danger" title={`-${formatCurrency(d.egresos)}`}>-{formatCompact(d.egresos)}</p>}
+                        {d.pendingEgresos > 0 && <p className="text-xs font-bold text-amber-500" title={`~-${formatCurrency(d.pendingEgresos)}`}>~-{formatCompact(d.pendingEgresos)}</p>}
+                        {d.proyEgresos > 0 && <p className="text-xs font-bold text-blue-500" title={`~-${formatCurrency(d.proyEgresos)}`}>~-{formatCompact(d.proyEgresos)}</p>}
                       </div>
                     )}
                     {!hasIn && !hasEg && <p className="text-xs text-slate-300">—</p>}
@@ -428,25 +424,19 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
                       <p className="text-2xl font-black text-slate-900">{d.date}</p>
                     </div>
                     <div className="flex-1 flex flex-col gap-2">
-                      <div className={cn(
-                        "flex-1 rounded-2xl border flex flex-col items-center justify-center p-2",
-                        d.ingresos > 0 ? "bg-brand-success/10 border-brand-success/10" : d.pendingIngresos > 0 ? "bg-amber-50 border-amber-100" : d.proyIngresos > 0 ? "bg-orange-50 border-orange-100" : "bg-slate-50 border-slate-100"
-                      )}>
-                        <span className={cn("text-[10px] font-bold",
-                          d.ingresos > 0 ? "text-brand-success" : d.pendingIngresos > 0 ? "text-amber-500" : d.proyIngresos > 0 ? "text-orange-500" : "text-slate-300"
-                        )} title={d.ingresos > 0 ? `+${formatCurrency(d.ingresos)}` : d.pendingIngresos > 0 ? `~+${formatCurrency(d.pendingIngresos)}` : d.proyIngresos > 0 ? `~+${formatCurrency(d.proyIngresos)}` : undefined}>
-                          {d.ingresos > 0 ? `+${formatCompact(d.ingresos)}` : d.pendingIngresos > 0 ? `~+${formatCompact(d.pendingIngresos)}` : d.proyIngresos > 0 ? `~+${formatCompact(d.proyIngresos)}` : '—'}
-                        </span>
+                      {/* Ingresos column */}
+                      <div className="flex-1 rounded-2xl border border-slate-100 bg-slate-50 flex flex-col items-center justify-center gap-0.5 p-2 min-h-[60px]">
+                        {d.ingresos > 0 && <span className="text-[10px] font-bold text-brand-success" title={`+${formatCurrency(d.ingresos)}`}>+{formatCompact(d.ingresos)}</span>}
+                        {d.pendingIngresos > 0 && <span className="text-[10px] font-bold text-amber-500" title={`~+${formatCurrency(d.pendingIngresos)}`}>~+{formatCompact(d.pendingIngresos)}</span>}
+                        {d.proyIngresos > 0 && <span className="text-[10px] font-bold text-blue-500" title={`~+${formatCurrency(d.proyIngresos)}`}>~+{formatCompact(d.proyIngresos)}</span>}
+                        {d.ingresos === 0 && d.pendingIngresos === 0 && d.proyIngresos === 0 && <span className="text-[10px] font-bold text-slate-300">—</span>}
                       </div>
-                      <div className={cn(
-                        "h-24 rounded-2xl border flex flex-col items-center justify-center p-2",
-                        d.egresos > 0 ? "bg-brand-danger/10 border-brand-danger/10" : d.pendingEgresos > 0 ? "bg-amber-50 border-amber-100" : d.proyEgresos > 0 ? "bg-orange-50 border-orange-100" : "bg-slate-50 border-slate-100"
-                      )}>
-                        <span className={cn("text-[10px] font-bold",
-                          d.egresos > 0 ? "text-brand-danger" : d.pendingEgresos > 0 ? "text-amber-500" : d.proyEgresos > 0 ? "text-orange-500" : "text-slate-300"
-                        )} title={d.egresos > 0 ? `-${formatCurrency(d.egresos)}` : d.pendingEgresos > 0 ? `~-${formatCurrency(d.pendingEgresos)}` : d.proyEgresos > 0 ? `~-${formatCurrency(d.proyEgresos)}` : undefined}>
-                          {d.egresos > 0 ? `-${formatCompact(d.egresos)}` : d.pendingEgresos > 0 ? `~-${formatCompact(d.pendingEgresos)}` : d.proyEgresos > 0 ? `~-${formatCompact(d.proyEgresos)}` : '—'}
-                        </span>
+                      {/* Egresos column */}
+                      <div className="h-24 rounded-2xl border border-slate-100 bg-slate-50 flex flex-col items-center justify-center gap-0.5 p-2">
+                        {d.egresos > 0 && <span className="text-[10px] font-bold text-brand-danger" title={`-${formatCurrency(d.egresos)}`}>-{formatCompact(d.egresos)}</span>}
+                        {d.pendingEgresos > 0 && <span className="text-[10px] font-bold text-amber-500" title={`~-${formatCurrency(d.pendingEgresos)}`}>~-{formatCompact(d.pendingEgresos)}</span>}
+                        {d.proyEgresos > 0 && <span className="text-[10px] font-bold text-blue-500" title={`~-${formatCurrency(d.proyEgresos)}`}>~-{formatCompact(d.proyEgresos)}</span>}
+                        {d.egresos === 0 && d.pendingEgresos === 0 && d.proyEgresos === 0 && <span className="text-[10px] font-bold text-slate-300">—</span>}
                       </div>
                     </div>
                   </div>
@@ -457,20 +447,34 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
         </div>
       </div>
 
-      {summary.alerts.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-bold text-slate-900 px-1">Alertas de Liquidez</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {summary.alerts.map(alert => (
-              <div key={alert.id} className={cn("p-5 bg-white rounded-3xl border card-shadow flex gap-4", alert.type === 'danger' ? "ring-1 ring-brand-danger/5" : "ring-1 ring-brand-success/5")}>
-                {alert.type === 'danger'
-                  ? <AlertTriangle className="text-brand-danger shrink-0" size={20} />
-                  : <ArrowDownCircle className="text-brand-success shrink-0" size={20} />
-                }
-                <div className="space-y-1">
-                  <p className="text-sm font-bold text-slate-900">{alert.title}</p>
-                  <p className="text-xs font-medium text-slate-500">{alert.description}</p>
+      {periodAlerts.length > 0 && (
+        <div className="bg-white rounded-3xl sm:rounded-[40px] border border-slate-100 card-shadow overflow-hidden">
+          <div className="px-6 sm:px-8 py-5 border-b border-slate-100 flex items-center justify-between">
+            <h3 className="text-lg font-black text-slate-900 tracking-tight">Alertas de Liquidez</h3>
+            <span className="text-xs font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full">
+              {periodAlerts.length} {periodAlerts.length === 1 ? 'alerta' : 'alertas'}
+            </span>
+          </div>
+          <div className="divide-y divide-slate-50 max-h-72 overflow-y-auto">
+            {periodAlerts.map(alert => (
+              <div key={alert.id} className="flex items-center gap-4 px-6 sm:px-8 py-4 hover:bg-slate-50 transition-colors">
+                <div className={cn("shrink-0 w-8 h-8 rounded-xl flex items-center justify-center",
+                  alert.type === 'danger' ? "bg-brand-danger/10 text-brand-danger" : "bg-brand-success/10 text-brand-success"
+                )}>
+                  {alert.type === 'danger'
+                    ? <AlertTriangle size={16} />
+                    : <ArrowDownCircle size={16} />
+                  }
                 </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-slate-900 truncate">{alert.description}</p>
+                  <p className="text-xs font-semibold text-slate-400">{alert.title} · {alert.dueDate}</p>
+                </div>
+                <p className={cn("text-sm font-black shrink-0",
+                  alert.type === 'danger' ? "text-brand-danger" : "text-brand-success"
+                )}>
+                  {alert.type === 'danger' ? '-' : '+'}{formatCurrency(alert.amount)}
+                </p>
               </div>
             ))}
           </div>
@@ -486,10 +490,12 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
               onClick={() => setShowFilters(v => !v)}
               className={cn(
                 "flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-colors relative",
-                showFilters ? "bg-brand-primary text-white" : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+                showFilters || activeFilters > 0
+                  ? "bg-brand-primary text-white shadow-lg shadow-brand-primary/20"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               )}
             >
-              <Filter size={18} /><span>Filtrar</span>
+              <Filter size={18} /><span>Filtros</span>
               {activeFilters > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-brand-danger text-white text-[10px] font-black rounded-full flex items-center justify-center">
                   {activeFilters}
@@ -498,7 +504,7 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
             </button>
             {canWrite(user?.role) && (
               <>
-                <button onClick={onCreateProjection} className="flex items-center gap-2 bg-orange-500 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-orange-600 transition-all shadow-lg shadow-orange-500/20">
+                <button onClick={onCreateProjection} className="flex items-center gap-2 bg-blue-500 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/20">
                   <Plus size={20} /><span>Nueva Proyección</span>
                 </button>
                 <button onClick={onCreateMovement} className="flex items-center gap-2 bg-brand-dark text-white px-5 py-2.5 rounded-xl font-bold hover:bg-brand-accent transition-all shadow-lg shadow-brand-dark/20">
@@ -509,78 +515,12 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
           </div>
         </div>
 
-        {/* Filter Panel */}
-        {showFilters && (
-          <div className="px-8 py-5 border-b border-slate-100 bg-slate-50/60 flex flex-wrap items-end gap-6">
-            <div className="space-y-1.5">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tipo</p>
-              <div className="flex gap-1.5">
-                {(['Todos', 'Ingreso', 'Egreso'] as FilterType[]).map(v => (
-                  <button
-                    key={v}
-                    onClick={() => setFilterType(v)}
-                    className={cn(
-                      "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
-                      filterType === v ? "bg-brand-primary text-white" : "bg-white text-slate-500 border border-slate-200 hover:border-brand-primary/40"
-                    )}
-                  >{v}</button>
-                ))}
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Estado</p>
-              <div className="flex gap-1.5">
-                {(['Todos', 'Completado', 'Pendiente', 'Anulado'] as FilterStatus[]).map(v => (
-                  <button
-                    key={v}
-                    onClick={() => setFilterStatus(v)}
-                    className={cn(
-                      "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
-                      filterStatus === v ? "bg-brand-primary text-white" : "bg-white text-slate-500 border border-slate-200 hover:border-brand-primary/40"
-                    )}
-                  >{v}</button>
-                ))}
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Origen</p>
-              <div className="flex gap-1.5">
-                {(['Todos', 'Siigo', 'Manual'] as FilterSource[]).map(v => (
-                  <button
-                    key={v}
-                    onClick={() => setFilterSource(v)}
-                    className={cn(
-                      "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
-                      filterSource === v ? "bg-brand-primary text-white" : "bg-white text-slate-500 border border-slate-200 hover:border-brand-primary/40"
-                    )}
-                  >{v}</button>
-                ))}
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Registro</p>
-              <div className="flex gap-1.5">
-                {(['Todos', 'Movimiento', 'Proyección'] as FilterRecord[]).map(v => (
-                  <button
-                    key={v}
-                    onClick={() => setFilterRecord(v)}
-                    className={cn(
-                      "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
-                      filterRecord === v
-                        ? v === 'Proyección' ? "bg-orange-500 text-white" : "bg-brand-primary text-white"
-                        : "bg-white text-slate-500 border border-slate-200 hover:border-brand-primary/40"
-                    )}
-                  >{v}</button>
-                ))}
-              </div>
-            </div>
-            {activeFilters > 0 && (
-              <button onClick={clearFilters} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-brand-danger bg-brand-danger/10 hover:bg-brand-danger/20 transition-colors">
-                <X size={12} /><span>Limpiar filtros</span>
-              </button>
-            )}
-          </div>
-        )}
+        <TransactionFilters
+          show={showFilters}
+          filters={filters}
+          onChange={handleFilterChange}
+          onClear={clearFilters}
+        />
 
         {/* Table */}
         <div className="overflow-x-auto">
@@ -604,7 +544,7 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
                     {periodTxs.length === 0 ? `Sin movimientos en ${title.toLowerCase()}` : 'Ningún movimiento coincide con los filtros aplicados'}
                   </td>
                 </tr>
-              ) : filteredTxs.map(tx => (
+              ) : pagedTxs.map(tx => (
                 <tr key={tx.id} onClick={() => setSelectedTx(tx)} className="hover:bg-slate-50 transition-colors cursor-pointer">
                   <td className="px-3 sm:px-8 py-3 sm:py-6 text-sm font-semibold text-slate-500 whitespace-nowrap">{tx.date}</td>
                   <td className="px-3 sm:px-8 py-3 sm:py-6">
@@ -628,7 +568,7 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
                   </td>
                   <td className="hidden sm:table-cell px-3 sm:px-8 py-3 sm:py-6">
                     {tx.isProjection ? (
-                      <span className="text-[10px] font-black px-2.5 py-1.5 rounded-lg uppercase tracking-widest border bg-orange-50 text-orange-500 border-orange-200">
+                      <span className="text-[10px] font-black px-2.5 py-1.5 rounded-lg uppercase tracking-widest border bg-blue-50 text-blue-500 border-blue-200">
                         Proyección
                       </span>
                     ) : (
@@ -644,11 +584,13 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
           </table>
         </div>
 
-        <div className="p-4 sm:p-8 border-t border-slate-100">
-          <span className="text-sm font-semibold text-slate-400">
-            {filteredTxs.length} de {periodTxs.length} movimiento{periodTxs.length !== 1 ? 's' : ''} en {title.toLowerCase()}
-          </span>
-        </div>
+        <Pagination
+          page={txPage}
+          totalPages={txTotalPages}
+          total={filteredTxs.length}
+          pageSize={TX_PAGE_SIZE}
+          onPage={setTxPage}
+        />
       </div>
     </motion.div>
     </>

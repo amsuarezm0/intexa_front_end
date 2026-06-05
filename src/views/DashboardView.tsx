@@ -437,11 +437,16 @@ export function DashboardView({
               <div className="w-full h-[250px] relative">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={data.expensePie} cx="50%" cy="50%" innerRadius={80} outerRadius={105} paddingAngle={8} dataKey="value">
-                      {data.expensePie.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                      ))}
-                    </Pie>
+                    {data.monthExpense === 0 || data.expensePie.every(e => e.value === 0)
+                      ? <Pie data={[{ value: 1 }]} cx="50%" cy="50%" innerRadius={80} outerRadius={105} dataKey="value" isAnimationActive={false}>
+                          <Cell fill="#e2e8f0" />
+                        </Pie>
+                      : <Pie data={data.expensePie} cx="50%" cy="50%" innerRadius={80} outerRadius={105} paddingAngle={8} dataKey="value">
+                          {data.expensePie.map((_, index) => (
+                            <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                          ))}
+                        </Pie>
+                    }
                     <Tooltip />
                   </PieChart>
                 </ResponsiveContainer>
@@ -451,15 +456,18 @@ export function DashboardView({
                 </div>
               </div>
               <div className="w-full space-y-4">
-                {data.expensePie.map((entry, index) => (
-                  <div key={index} className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: PIE_COLORS[index] }} />
-                      <span className="text-sm font-semibold text-slate-600">{entry.name}</span>
+                {data.monthExpense === 0 || data.expensePie.every(e => e.value === 0)
+                  ? <p className="text-sm text-slate-400 text-center">Sin gastos registrados</p>
+                  : data.expensePie.map((entry, index) => (
+                    <div key={index} className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: PIE_COLORS[index] }} />
+                        <span className="text-sm font-semibold text-slate-600">{entry.name}</span>
+                      </div>
+                      <span className="text-sm font-bold text-slate-900">{entry.value}%</span>
                     </div>
-                    <span className="text-sm font-bold text-slate-900">{entry.value}%</span>
-                  </div>
-                ))}
+                  ))
+                }
               </div>
             </div>
           </div>

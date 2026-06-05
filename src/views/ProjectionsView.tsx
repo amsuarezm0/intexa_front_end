@@ -1,15 +1,14 @@
-import { AlertCircle,Building2,Clock,FileCheck,Plus,TrendingDown,TrendingUp } from 'lucide-react';
+import { Building2,Plus,TrendingDown,TrendingUp } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useEffect,useState } from 'react';
 import { Area,AreaChart,CartesianGrid,ResponsiveContainer,Tooltip,XAxis,YAxis } from 'recharts';
 import type { LoggedInUser } from '../App';
+import { ProjectionTable } from '../components/ProjectionTable';
 import { Skeleton,SkeletonCard,SkeletonChart } from '../components/Skeleton';
 import { TransactionDetailDrawer } from '../components/TransactionDetailDrawer';
 import { useSettings } from '../contexts/SettingsContext';
 import { cn } from '../lib/utils';
 import { projectionsService,transactionsService,type ProjectionSummary,type Transaction } from '../services';
-
-const iconMap: Record<string, any> = { AlertCircle, FileCheck, Clock };
 
 const PERIODS = [30, 60, 90] as const;
 type Period = 30 | 60 | 90;
@@ -44,6 +43,8 @@ export function ProjectionsView({ onCreateProjection, user }: { onCreateProjecti
   }, []);
 
   const { formatCurrency, formatCompact } = useSettings();
+
+  const periodAlerts = dataMap[chartPeriod]?.alerts ?? [];
 
   if (error) return <div className="p-8 text-brand-danger font-semibold">{error}</div>;
   if (isLoading || !dataMap[30]) {
@@ -177,43 +178,14 @@ export function ProjectionsView({ onCreateProjection, user }: { onCreateProjecti
         </div>
       </div>
 
-      {/* Alerts from the active period */}
-      <div className="space-y-6">
-        <h3 className="text-xl font-bold text-slate-900 tracking-tight">Vencimientos y Alertas</h3>
-        <div className="space-y-4">
-          {(dataMap[chartPeriod]?.alerts ?? []).map(alert => {
-            const Icon = iconMap[alert.icon] ?? AlertCircle;
-            return (
-              <div key={alert.id} onClick={() => handleAlertClick(alert.id)} className={cn(
-                "p-4 sm:p-6 rounded-2xl sm:rounded-[32px] border transition-all cursor-pointer group flex items-start gap-4 sm:gap-6",
-                alert.color === 'brand-danger' ? "bg-brand-danger/[0.03] border-brand-danger/10 hover:bg-brand-danger/[0.08]" :
-                alert.color === 'brand-success' ? "bg-brand-success/[0.03] border-brand-success/10 hover:bg-brand-success/[0.08]" :
-                "bg-white border-slate-100 hover:shadow-xl hover:shadow-slate-200/50"
-              )}>
-                <div className={cn("p-3 rounded-2xl shrink-0",
-                  alert.color === 'brand-danger' ? "bg-brand-danger text-white shadow-lg shadow-brand-danger/20" :
-                  alert.color === 'brand-success' ? "bg-brand-success text-white shadow-lg shadow-brand-success/20" :
-                  "bg-brand-dark text-white"
-                )}>
-                  <Icon size={22} />
-                </div>
-                <div className="flex-1 space-y-1">
-                  <div className="flex justify-between items-start gap-2">
-                    <h4 className="font-bold text-slate-900 leading-snug">{alert.title}</h4>
-                    <span className={cn("text-[10px] font-black uppercase tracking-widest shrink-0",
-                      alert.color === 'brand-danger' ? "text-brand-danger" : alert.color === 'brand-success' ? "text-brand-success" : "text-brand-danger"
-                    )}>{alert.dueDate}</span>
-                  </div>
-                  <p className="text-xs font-semibold text-slate-500">{alert.description}</p>
-                </div>
-                <div className="text-right ml-4">
-                  <p className="text-sm font-black text-slate-900" title={formatCurrency(alert.amount)}>
-                    {formatCompact(alert.amount)}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
+      {/* Ingresos / Egresos tables — driven by the selected period card */}
+      <div className="space-y-3">
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
+          Proyección a {chartPeriod} días
+        </p>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <ProjectionTable type="income"  rows={periodAlerts} onRowClick={handleAlertClick} />
+          <ProjectionTable type="expense" rows={periodAlerts} onRowClick={handleAlertClick} />
         </div>
       </div>
     </motion.div>

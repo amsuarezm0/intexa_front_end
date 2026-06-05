@@ -1,12 +1,9 @@
 import {
 ArrowDownCircle,ArrowUpCircle,
 Calendar as CalendarIcon,
-CheckCircle2,
 ChevronDown,
 Sparkles,
 TrendingUp,
-User,
-Zap
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useEffect,useState } from 'react';
@@ -17,13 +14,10 @@ import { categoriesService,transactionsService,type Category,type TransactionSum
 interface CreateMovementViewProps {
   onBack: () => void;
   onSave: () => void;
-  initialIsProjection?: boolean;
 }
 
-export function CreateMovementView({ onBack, onSave, initialIsProjection = false }: CreateMovementViewProps) {
+export function CreateMovementView({ onBack, onSave }: CreateMovementViewProps) {
   const [type, setType] = useState<'Ingreso' | 'Egreso'>('Ingreso');
-  const [source, setSource] = useState<'Siigo' | 'Manual'>('Manual');
-  const [isProjection, setIsProjection] = useState(initialIsProjection);
   const [date, setDate] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
@@ -57,8 +51,8 @@ export function CreateMovementView({ onBack, onSave, initialIsProjection = false
         type,
         amount: parseFloat(amount.replace(/,/g, '.')),
         status: 'Pendiente',
-        source,
-        isProjection,
+        source: 'Manual',
+        isProjection: false,
       });
       onSave();
     } catch (err: any) {
@@ -85,7 +79,7 @@ export function CreateMovementView({ onBack, onSave, initialIsProjection = false
         <div className="lg:col-span-2 space-y-8">
           <div className="space-y-2">
             <h1 className="text-4xl font-black text-slate-900 tracking-tight">Crear Movimiento</h1>
-            <p className="text-slate-500 font-semibold tracking-tight">Complete los detalles para registrar una nueva transacción o proyección.</p>
+            <p className="text-slate-500 font-semibold tracking-tight">Complete los detalles para registrar una nueva transacción manual.</p>
           </div>
 
           <div className="bg-white p-5 sm:p-10 rounded-3xl sm:rounded-[48px] border border-slate-100 card-shadow space-y-10">
@@ -165,45 +159,6 @@ export function CreateMovementView({ onBack, onSave, initialIsProjection = false
                 className="w-full px-5 py-5 bg-slate-50 border border-slate-100 rounded-3xl font-semibold text-slate-700 outline-none focus:border-brand-primary focus:bg-white transition-all h-32 resize-none"
               />
             </div>
-
-            {/* Source */}
-            <div className="space-y-4">
-              <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest pl-1">ORIGEN DEL DATO</label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {(['Siigo', 'Manual'] as const).map(s => (
-                  <button key={s} onClick={() => setSource(s)} className={cn(
-                    "relative p-6 rounded-3xl border-2 text-left transition-all group",
-                    source === s ? "border-brand-primary bg-brand-primary/5" : "border-slate-100 bg-white hover:border-slate-200"
-                  )}>
-                    <div className="flex justify-between items-start mb-4">
-                      <div className={cn("p-3 rounded-2xl transition-colors", source === s ? "bg-brand-primary text-white" : "bg-slate-100 text-slate-400 group-hover:bg-brand-primary/10 group-hover:text-brand-primary")}>
-                        {s === 'Siigo' ? <Zap size={24} /> : <User size={24} />}
-                      </div>
-                      {source === s && <div className="w-6 h-6 bg-brand-primary text-white rounded-full flex items-center justify-center p-1"><CheckCircle2 size={16} /></div>}
-                    </div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="text-base font-black text-slate-900">{s}</p>
-                      {s === 'Siigo' && <span className="text-[8px] font-black bg-brand-primary text-white px-2 py-0.5 rounded-md uppercase tracking-widest">AUTOMÁTICO</span>}
-                    </div>
-                    <p className="text-xs font-semibold text-slate-400">{s === 'Siigo' ? 'Sincronizado vía ERP' : 'Entrada de usuario'}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Projection toggle */}
-            <button
-              onClick={() => setIsProjection(p => !p)}
-              className={cn("w-full bg-brand-success/5 border border-brand-success/10 p-6 rounded-3xl flex items-center gap-4 transition-colors text-left", isProjection ? "bg-brand-success/10" : "hover:bg-brand-success/10")}
-            >
-              <div className={cn("w-6 h-6 border-2 border-brand-success rounded-md flex items-center justify-center transition-colors", isProjection ? "bg-brand-success" : "bg-white")}>
-                <div className={cn("w-2.5 h-2.5 rounded-sm transition-colors", isProjection ? "bg-white" : "bg-brand-success")} />
-              </div>
-              <div>
-                <p className="text-sm font-black text-brand-success uppercase tracking-widest">Es proyección</p>
-                <p className="text-xs font-semibold text-slate-500">Este movimiento no afectará el saldo real hasta ser conciliado.</p>
-              </div>
-            </button>
 
             <div className="flex gap-4 pt-4">
               <button onClick={onBack} className="flex-1 py-5 rounded-3xl font-black text-slate-400 hover:bg-slate-50 transition-all uppercase tracking-widest text-sm">

@@ -28,6 +28,8 @@ export interface TransactionListResponse {
 
 export interface TransactionSummary {
   totalBalance: number;
+  totalIncome: number;
+  totalExpense: number;
   monthlyIncome: number;
   monthlyExpense: number;
 }
@@ -45,13 +47,16 @@ export interface CreateTransactionInput {
 }
 
 export const transactionsService = {
-  list: (params?: { page?: number; limit?: number; search?: string; type?: string; status?: string; isProjection?: boolean }) => {
+  list: (params?: { page?: number; limit?: number; search?: string; type?: string; status?: string; dateFrom?: string; dateTo?: string; source?: string; isProjection?: boolean }) => {
     const qs = new URLSearchParams();
     if (params?.page) qs.set('page', String(params.page));
     if (params?.limit) qs.set('limit', String(params.limit));
     if (params?.search) qs.set('search', params.search);
     if (params?.type) qs.set('type', params.type);
     if (params?.status) qs.set('status', params.status);
+    if (params?.dateFrom) qs.set('dateFrom', params.dateFrom);
+    if (params?.dateTo) qs.set('dateTo', params.dateTo);
+    if (params?.source) qs.set('source', params.source);
     if (params?.isProjection !== undefined) qs.set('isProjection', String(params.isProjection));
     const query = qs.toString();
     return api.get<TransactionListResponse>(`/transactions${query ? `?${query}` : ''}`);

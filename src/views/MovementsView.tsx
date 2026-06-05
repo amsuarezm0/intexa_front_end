@@ -67,10 +67,12 @@ async function exportXLSX(transactions: Transaction[], formatCurrency: (n: numbe
 export function MovementsView({
   onCreateMovement,
   initialSelectedId,
+  initialSearch = '',
   user,
 }: {
   onCreateMovement?: () => void;
   initialSelectedId?: string;
+  initialSearch?: string;
   user?: LoggedInUser | null;
 }) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -78,8 +80,8 @@ export function MovementsView({
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [page, setPage] = useState(1);
-  const [search, setSearch] = useState('');
-  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState(initialSearch);
+  const [searchInput, setSearchInput] = useState(initialSearch);
   const [filters, setFilters] = useState<TxFilters>({ type: '', status: '', source: '', record: '', dateFrom: '', dateTo: '' });
   const { type: typeFilter, status: statusFilter, source: sourceFilter, record: recordFilter, dateFrom = '', dateTo = '' } = filters;
   const [showFilters, setShowFilters] = useState(false);

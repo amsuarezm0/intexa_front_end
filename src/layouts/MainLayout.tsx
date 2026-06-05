@@ -26,12 +26,14 @@ interface MainLayoutProps {
   onNavigate: (view: any) => void;
   onLogout?: () => void;
   onSyncSuccess?: () => void;
+  onSearch?: (query: string) => void;
   user?: LoggedInUser | null;
 }
 
-export function MainLayout({ children, currentView, onNavigate, onLogout, onSyncSuccess, user }: MainLayoutProps) {
+export function MainLayout({ children, currentView, onNavigate, onLogout, onSyncSuccess, onSearch, user }: MainLayoutProps) {
   const [syncState, setSyncState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [showSyncMenu, setShowSyncMenu] = useState(false);
+  const [headerSearch, setHeaderSearch] = useState('');
   const getToday = () => new Date().toISOString().split('T')[0];
   const [bootstrapDate, setBootstrapDate] = useState(getToday);
   const [showBootstrapInput, setShowBootstrapInput] = useState(false);
@@ -166,14 +168,18 @@ export function MainLayout({ children, currentView, onNavigate, onLogout, onSync
 
           {/* Search — hidden on small screens */}
           <div className="hidden sm:block flex-1 max-w-xl">
-            <div className="relative group">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-primary transition-colors" size={18} />
-              <input
-                type="text"
-                placeholder="Buscar movimientos o facturas..."
-                className="w-full pl-10 pr-4 py-2 bg-slate-50 border-transparent border focus:border-brand-primary/30 focus:bg-white rounded-xl text-sm transition-all outline-none"
-              />
-            </div>
+            <form onSubmit={e => { e.preventDefault(); if (headerSearch.trim()) { onSearch?.(headerSearch.trim()); setHeaderSearch(''); } }}>
+              <div className="relative group">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-primary transition-colors" size={18} />
+                <input
+                  type="text"
+                  value={headerSearch}
+                  onChange={e => setHeaderSearch(e.target.value)}
+                  placeholder="Buscar movimientos o facturas..."
+                  className="w-full pl-10 pr-4 py-2 bg-slate-50 border-transparent border focus:border-brand-primary/30 focus:bg-white rounded-xl text-sm transition-all outline-none"
+                />
+              </div>
+            </form>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4 ml-auto">

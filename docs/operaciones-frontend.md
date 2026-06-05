@@ -98,6 +98,72 @@ Los valores compactos muestran el valor completo con `formatCurrency` al hacer h
 
 ---
 
+### Tipos de sincronización Siigo
+
+**`src/layouts/MainLayout.tsx`** | **`internal/handler/siigo.go`**
+
+El botón **Sincronizar** del header expone tres modos. El usuario activo debe tener rol `ADMINISTRADOR` o `TESORERÍA`.
+
+#### Incremental — automático diario
+
+```
+dateStart = hoy − 90 días   (siempre calculado desde time.Now())
+dateEnd   = hoy
+```
+
+Se ejecuta automáticamente cada día a las **06:00** hora local. También se dispara manualmente al pulsar el botón principal "Sincronizar".
+
+Objetivo: recoger registros nuevos y actualizaciones de estado dentro de la ventana móvil de 90 días.
+
+#### Reconcile — desde la transacción pendiente más antigua
+
+```
+dateStart = fecha de la transacción más antigua con status Pendiente o Parcial en BD
+dateEnd   = hoy
+fallback  = hoy − 90 días   (si no hay transacciones pendientes/parciales)
+```
+
+Se ejecuta automáticamente el **1 de cada mes**. También se puede lanzar manualmente desde el menú desplegable del botón de sincronización.
+
+Razonamiento: las transacciones `Completado` son definitivas — Siigo no las modifica. Solo las transacciones `Pendiente` y `Parcial` pueden recibir actualizaciones (cobros, pagos, anulaciones). Por eso el rango parte desde la más antigua de esas dos, optimizando el volumen de datos descargado.
+
+La ventana calculada se registra en los logs estructurados como `siigo_reconcile_window` con `date_start` y `date_end`.
+
+#### Bootstrap — desde fecha seleccionada
+
+```
+dateStart = fecha elegida por el usuario (date picker)
+dateEnd   = hoy
+```
+
+Disponible manualmente desde el menú desplegable. Se usa para cargar historial completo desde una fecha determinada. El date picker:
+- Se inicializa con la fecha actual al abrir el panel (`getToday()`)
+- Tiene `max = getToday()` — no permite seleccionar fechas futuras
+- Al pulsar el botón se muestra el rango explícito: `Importar YYYY-MM-DD → hoy`
+
+#### Filtro de fechas en el servidor
+
+Independientemente del modo, el servidor descarta cualquier registro cuya fecha de documento (`inv.Date` / `pur.Date`) quede fuera del rango `[dateStart, dateEnd]`. Esto compensa el comportamiento de la API de Siigo, que puede devolver registros fuera del rango solicitado.
+
+#### Refresco automático del token
+
+El token de Siigo expira cada 24 horas. Al conectarse, se lanza una goroutine (`StartAutoRefresh`) que renueva el token **10 minutos antes de su expiración** — sin cortar ninguna solicitud en curso. El evento queda registrado como `siigo_token_refreshed` en los logs.
+
+#### Endpoint de sincronización
+
+```
+POST /api/v1/siigo/sync  { mode, dateStart?, dateEnd? }
+→ { mode, dateStart, dateEnd, invoicesImported, purchasesImported, updated }
+```
+
+| Campo | Requerido | Descripción |
+|---|---|---|
+| `mode` | sí | `"incremental"` · `"reconcile"` · `"bootstrap"` |
+| `dateStart` | solo bootstrap | Fecha de inicio `YYYY-MM-DD` |
+| `dateEnd` | no | Por defecto: hoy |
+
+---
+
 ### Modelo de pagos parciales
 
 **Backend: `internal/domain/models.go` | `internal/handler/compute.go`**
@@ -1215,4 +1281,15 @@ SettingsView
   → Frontend: sha256(password), refreshSettings tras guardar moneda
   → POST /users al crear usuario
   → PUT  /settings al guardar preferencias
+
+Sincronización Siigo (header — ADMINISTRADOR / TESORERÍA)
+  Incremental  → POST /siigo/sync { mode:"incremental" }
+                 dateStart = hoy−90d, dateEnd = hoy
+                 automático diario 06:00 / manual desde botón principal
+  Reconcile    → POST /siigo/sync { mode:"reconcile" }
+                 dateStart = fecha más antigua Pendiente|Parcial en BD
+                 automático 1° de mes / manual desde menú desplegable
+  Bootstrap    → POST /siigo/sync { mode:"bootstrap", dateStart:"YYYY-MM-DD" }
+                 dateStart = fecha elegida por usuario, dateEnd = hoy
+                 solo manual; date picker inicializado con hoy, max=hoy
 ```

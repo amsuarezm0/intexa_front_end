@@ -121,6 +121,14 @@ export function MovementsView({
     hasFetched.current = true;
   }, [fetchData]);
 
+  // Sync when header search is submitted while already on this view
+  useEffect(() => {
+    if (initialSearch === '') return;
+    setSearchInput(initialSearch);
+    setSearch(initialSearch);
+    setPage(1);
+  }, [initialSearch]);
+
   useEffect(() => {
     const t = setTimeout(() => { setSearch(searchInput); setPage(1); }, 400);
     return () => clearTimeout(t);

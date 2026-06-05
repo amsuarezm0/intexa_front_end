@@ -27,6 +27,9 @@ export default function App() {
     if (!getToken() && currentView !== 'login') {
       setCurrentView('login');
     }
+    if (currentView !== 'movements') {
+      setHeaderSearch('');
+    }
   }, [currentView]);
 
   const handleLogin = (u: LoggedInUser) => {

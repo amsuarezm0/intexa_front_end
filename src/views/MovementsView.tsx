@@ -94,19 +94,22 @@ export function MovementsView({
 
   const { formatCurrency, formatCompact } = useSettings();
 
+  const fetchSummary = useCallback(async () => {
+    try {
+      const summaryRes = await transactionsService.summary();
+      setSummary(prev => ({ ...prev, ...(summaryRes ?? {}) }));
+    } catch { /* silent */ }
+  }, []);
+
   const fetchData = useCallback(async (initial = false) => {
     if (initial) setIsInitialLoading(true);
     else setIsFetching(true);
     setError('');
     try {
-      const [listRes, summaryRes] = await Promise.all([
-        transactionsService.list({ page, limit: 10, search, type: typeFilter || undefined, status: statusFilter || undefined, source: sourceFilter || undefined, isProjection: recordFilter === 'Proyección' ? true : recordFilter === 'Movimiento' ? false : undefined, dateFrom: dateFrom || undefined, dateTo: dateTo || undefined }),
-        transactionsService.summary(),
-      ]);
+      const listRes = await transactionsService.list({ page, limit: 10, search, type: typeFilter || undefined, status: statusFilter || undefined, source: sourceFilter || undefined, isProjection: recordFilter === 'Proyección' ? true : recordFilter === 'Movimiento' ? false : undefined, dateFrom: dateFrom || undefined, dateTo: dateTo || undefined });
       setTransactions(listRes.data);
       setTotal(listRes.total);
       setTotalPages(listRes.totalPages);
-      setSummary(prev => ({ ...prev, ...(summaryRes ?? {}) }));
     } catch {
       setError('No se pudo cargar los movimientos.');
     } finally {
@@ -117,8 +120,10 @@ export function MovementsView({
 
   const hasFetched = useRef(false);
   useEffect(() => {
-    fetchData(!hasFetched.current);
+    const initial = !hasFetched.current;
     hasFetched.current = true;
+    if (initial) fetchSummary();
+    fetchData(initial);
   }, [fetchData]);
 
   // Sync when header search is submitted while already on this view
@@ -192,8 +197,8 @@ export function MovementsView({
       transaction={selectedTx}
       isLoading={isLoadingDetail}
       onClose={() => setSelectedTx(null)}
-      onDeleted={() => { setSelectedTx(null); fetchData(); }}
-      onUpdated={tx => { setSelectedTx(tx); fetchData(); }}
+      onDeleted={() => { setSelectedTx(null); fetchData(); fetchSummary(); }}
+      onUpdated={tx => { setSelectedTx(tx); fetchData(); fetchSummary(); }}
       canWrite={canWrite(user?.role)}
     />
 

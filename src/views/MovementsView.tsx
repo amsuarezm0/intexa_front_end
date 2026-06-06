@@ -337,11 +337,6 @@ export function MovementsView({
                     </td>
                     <td className="px-3 sm:px-8 py-3 sm:py-6 text-right">
                       <span className="text-sm font-extrabold text-slate-900">{formatCurrency(tx.amount)}</span>
-                      {!!tx.balance && tx.balance > 0 && (
-                        <p className="text-[10px] font-bold text-brand-warning mt-0.5" title={`Saldo pendiente: ${formatCurrency(tx.balance)}`}>
-                          {formatCompact(tx.balance)} pend.
-                        </p>
-                      )}
                     </td>
                     <td className="px-3 sm:px-8 py-3 sm:py-6 text-right">
                       <StatusBadge status={tx.status} />

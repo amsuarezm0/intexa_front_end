@@ -1,5 +1,6 @@
 import { useEffect,useState } from 'react';
 import { SettingsProvider } from './contexts/SettingsContext';
+import { DocumentSearchModal } from './components/DocumentSearchModal';
 import { MainLayout } from './layouts/MainLayout';
 import { clearToken,getStoredUser,getToken,setStoredUser } from './lib/api';
 import { CashFlowView } from './views/CashFlowView';
@@ -22,14 +23,10 @@ export default function App() {
   );
   const [user, setUser] = useState<LoggedInUser | null>(() => getStoredUser());
   const [refreshKey, setRefreshKey] = useState(0);
-  const [headerSearch, setHeaderSearch] = useState('');
+  const [searchQuery, setSearchQuery] = useState<string | null>(null);
+
   useEffect(() => {
-    if (!getToken() && currentView !== 'login') {
-      setCurrentView('login');
-    }
-    if (currentView !== 'movements') {
-      setHeaderSearch('');
-    }
+    if (!getToken() && currentView !== 'login') setCurrentView('login');
   }, [currentView]);
 
   const handleLogin = (u: LoggedInUser) => {
@@ -57,7 +54,7 @@ export default function App() {
       case 'cashflow':
         return <CashFlowView key={refreshKey} onCreateMovement={() => handleNavigate('create-movement')} onCreateProjection={handleCreateProjection} user={user} />;
       case 'movements':
-        return <MovementsView key={refreshKey} initialSearch={headerSearch} onCreateMovement={() => handleNavigate('create-movement')} user={user} />;
+        return <MovementsView key={refreshKey} onCreateMovement={() => handleNavigate('create-movement')} user={user} />;
       case 'create-movement':
         return <CreateMovementView
           onBack={() => handleNavigate('movements')}
@@ -82,12 +79,15 @@ export default function App() {
 
   return (
     <SettingsProvider userId={user?.id ?? null}>
+      {searchQuery !== null && (
+        <DocumentSearchModal initialQuery={searchQuery} onClose={() => setSearchQuery(null)} />
+      )}
       <MainLayout
         currentView={currentView}
         onNavigate={handleNavigate as any}
         onLogout={handleLogout}
         onSyncSuccess={() => setRefreshKey(k => k + 1)}
-        onSearch={q => { setHeaderSearch(q); handleNavigate('movements'); }}
+        onSearch={q => setSearchQuery(q)}
         user={user}
       >
         {renderView()}

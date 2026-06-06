@@ -14,6 +14,8 @@ export interface SiigoSyncResult {
   dateEnd: string;
   invoicesImported: number;
   purchasesImported: number;
+  vouchersImported: number;
+  paymentReceiptsImported: number;
   updated: number;
 }
 

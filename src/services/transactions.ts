@@ -7,12 +7,10 @@ export interface Transaction {
   category: string;
   type: 'Ingreso' | 'Egreso';
   amount: number;
-  balance?: number;
-  status: 'Completado' | 'Parcial' | 'Pendiente' | 'Anulado';
+  status: 'Completado' | 'Pendiente' | 'Anulado';
   reference?: string;
   detail?: string;
   source: 'Siigo' | 'Manual';
-  parentId?: string;
   isProjection: boolean;
   createdAt: string;
   updatedAt: string;

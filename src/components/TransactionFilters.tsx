@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { cn } from '../lib/utils';
 
 export type TxTypeFilter   = '' | 'Ingreso' | 'Egreso';
-export type TxStatusFilter = '' | 'Completado' | 'Parcial' | 'Pendiente' | 'Anulado';
+export type TxStatusFilter = '' | 'Completado' | 'Pendiente' | 'Anulado';
 export type TxSourceFilter = '' | 'Siigo' | 'Manual';
 export type TxRecordFilter = '' | 'Movimiento' | 'Proyección';
 
@@ -32,7 +32,6 @@ const btn = (active: boolean, color?: string) =>
 
 const statusColor: Record<string, string> = {
   Completado: 'bg-brand-success text-white border-brand-success',
-  Parcial:    'bg-brand-warning text-white border-brand-warning',
   Pendiente:  'bg-brand-primary text-white border-brand-primary',
   Anulado:    'bg-brand-danger  text-white border-brand-danger',
 };
@@ -80,7 +79,7 @@ export function TransactionFilters({ show, filters, showDateFilter, onChange, on
               <div className="flex items-center gap-3">
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Estado</span>
                 <div className="flex gap-2">
-                  {(['Completado', 'Parcial', 'Pendiente', 'Anulado'] as TxStatusFilter[]).map(v => (
+                  {(['Completado', 'Pendiente', 'Anulado'] as TxStatusFilter[]).map(v => (
                     <button key={v} onClick={() => toggle('status', v)}
                       className={btn(status === v, statusColor[v])}>{v}</button>
                   ))}
@@ -156,7 +155,7 @@ export function TransactionFilters({ show, filters, showDateFilter, onChange, on
           )}
           {status && (
             <Chip
-              color={status === 'Completado' ? 'success' : status === 'Parcial' ? 'warning' : status === 'Pendiente' ? 'primary' : 'danger'}
+              color={status === 'Completado' ? 'success' : status === 'Pendiente' ? 'primary' : 'danger'}
               onRemove={() => onChange({ status: '' })}
             >{status}</Chip>
           )}

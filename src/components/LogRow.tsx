@@ -1,5 +1,4 @@
 import { Eye } from 'lucide-react';
-import { cn } from '../lib/utils';
 import type { ActivityLog } from '../services';
 
 interface Props {
@@ -20,9 +19,7 @@ export function LogRow({ log, locale, onSelect }: Props) {
         </div>
       </td>
       <td className="px-4 sm:px-10 py-4 sm:py-8">
-        <span className={cn('text-[10px] font-black px-3 py-1.5 rounded-lg text-white uppercase tracking-widest', log.color)}>
-          {log.action}
-        </span>
+        <span className="text-sm font-bold text-slate-700">{log.action}</span>
       </td>
       <td className="hidden sm:table-cell px-4 sm:px-10 py-4 sm:py-8 text-base font-bold text-slate-500">
         {log.module}

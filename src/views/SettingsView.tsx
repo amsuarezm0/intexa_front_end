@@ -4,6 +4,7 @@ import { useEffect,useState } from 'react';
 import { DeleteUserModal } from '../components/DeleteUserModal';
 import { LogDetailModal } from '../components/LogDetailModal';
 import { LogRow } from '../components/LogRow';
+import { Pagination } from '../components/Pagination';
 import { Skeleton,SkeletonCard } from '../components/Skeleton';
 import { UserCard } from '../components/UserCard';
 import { UserFormModal } from '../components/UserFormModal';
@@ -26,6 +27,8 @@ export function SettingsView() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<User | null>(null);
   const [selectedLog, setSelectedLog] = useState<ActivityLog | null>(null);
+  const [logPage, setLogPage] = useState(1);
+  const LOG_PAGE_SIZE = 10;
   const { locale, refreshSettings } = useSettings();
 
   useEffect(() => {
@@ -172,13 +175,10 @@ export function SettingsView() {
 
       {isAdmin && (
       <div className="bg-white p-5 sm:p-12 rounded-3xl sm:rounded-[56px] border border-slate-100 card-shadow space-y-10">
-        <div className="flex justify-between items-center">
-          <h3 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-4">
-            <History className="text-brand-primary" size={28} />
-            Logs de Actividad Reciente
-          </h3>
-          <button className="text-sm font-black text-slate-400 hover:text-brand-primary transition-colors border-b-2 border-transparent hover:border-brand-primary">Ver historial completo</button>
-        </div>
+        <h3 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-4">
+          <History className="text-brand-primary" size={28} />
+          Logs de Actividad Reciente
+        </h3>
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
@@ -189,12 +189,20 @@ export function SettingsView() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {logs.map((log) => (
+              {logs.slice((logPage - 1) * LOG_PAGE_SIZE, logPage * LOG_PAGE_SIZE).map((log) => (
                 <LogRow key={log.id} log={log} locale={locale} onSelect={setSelectedLog} />
               ))}
             </tbody>
           </table>
         </div>
+        <Pagination
+          page={logPage}
+          totalPages={Math.ceil(logs.length / LOG_PAGE_SIZE)}
+          total={logs.length}
+          pageSize={LOG_PAGE_SIZE}
+          onPage={setLogPage}
+          label="registros"
+        />
       </div>
       )}
 

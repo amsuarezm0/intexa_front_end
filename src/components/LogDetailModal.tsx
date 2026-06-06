@@ -1,6 +1,5 @@
 import { X } from 'lucide-react';
 import { motion } from 'motion/react';
-import { cn } from '../lib/utils';
 import type { ActivityLog } from '../services';
 
 interface Props {
@@ -34,9 +33,7 @@ export function LogDetailModal({ log, locale, onClose }: Props) {
           </div>
           <div>
             <p className="text-base font-black text-slate-900">{log.userName}</p>
-            <span className={cn('text-[10px] font-black px-3 py-1 rounded-lg text-white uppercase tracking-widest mt-1 inline-block', log.color)}>
-              {log.action}
-            </span>
+            <span className="text-sm font-bold text-slate-700 mt-1 inline-block">{log.action}</span>
           </div>
         </div>
 

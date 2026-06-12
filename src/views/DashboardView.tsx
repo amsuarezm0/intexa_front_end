@@ -55,13 +55,14 @@ function markSaldoUpdatedToday() {
 }
 
 function financialHealth(income: number, netFlow: number): { label: string; bars: number; color: string; barColor: string } {
-  if (income === 0) return { label: 'Sin datos',  bars: 0, color: 'text-slate-400',      barColor: 'bg-white/20' };
+  if (income === 0 && netFlow >= 0) return { label: 'Sin datos', bars: 0, color: 'text-slate-400', barColor: 'bg-white/20' };
+  if (income === 0 && netFlow < 0)  return { label: 'Crítica',   bars: 1, color: 'text-brand-danger', barColor: 'bg-brand-danger' };
   const ratio = netFlow / income;
-  if (ratio >= 0.20)  return { label: 'Óptima',    bars: 5, color: 'text-brand-success',  barColor: 'bg-brand-success' };
-  if (ratio >= 0.05)  return { label: 'Buena',     bars: 4, color: 'text-emerald-300',    barColor: 'bg-emerald-300' };
-  if (ratio >= 0)     return { label: 'Estable',   bars: 3, color: 'text-yellow-300',     barColor: 'bg-yellow-300' };
-  if (ratio >= -0.10) return { label: 'En riesgo', bars: 2, color: 'text-orange-400',     barColor: 'bg-orange-400' };
-  return                     { label: 'Crítica',   bars: 1, color: 'text-brand-danger',   barColor: 'bg-brand-danger' };
+  if (ratio >= 0.20)  return { label: 'Óptima',    bars: 5, color: 'text-brand-success',   barColor: 'bg-brand-success' };
+  if (ratio >= 0.05)  return { label: 'Buena',     bars: 4, color: 'text-brand-warning',   barColor: 'bg-brand-warning' };
+  if (ratio >= 0)     return { label: 'Estable',   bars: 3, color: 'text-brand-secondary', barColor: 'bg-brand-secondary' };
+  if (ratio >= -0.10) return { label: 'En riesgo', bars: 2, color: 'text-brand-dark',      barColor: 'bg-brand-dark' };
+  return                     { label: 'Crítica',   bars: 1, color: 'text-brand-danger',    barColor: 'bg-brand-danger' };
 }
 
 export function DashboardView({
@@ -234,7 +235,7 @@ export function DashboardView({
             <div className={cn(
               "bg-white p-6 rounded-2xl border card-shadow group transition-all cursor-default",
               !hasSaldoBeenUpdatedToday() && isTesorero
-                ? "border-amber-200 ring-1 ring-amber-200"
+                ? "border-brand-warning/30 ring-1 ring-brand-warning/30"
                 : "border-slate-100 hover:border-brand-primary/30"
             )}>
               <div className="flex justify-between items-start mb-4">
@@ -270,7 +271,7 @@ export function DashboardView({
                     </>
                   ) : (
                     <>
-                      <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600 group-hover:scale-110 transition-transform">
+                      <div className="p-2.5 rounded-xl bg-brand-primary/10 text-brand-primary group-hover:scale-110 transition-transform">
                         <Landmark size={22} />
                       </div>
                       {isTesorero && (
@@ -284,7 +285,7 @@ export function DashboardView({
               </div>
               <div className="flex items-center gap-2">
                 {!hasSaldoBeenUpdatedToday() && isTesorero ? (
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-600">Pendiente actualizar</span>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-brand-warning/15 text-brand-warning">Pendiente actualizar</span>
                 ) : (
                   <span className="text-xs text-slate-400 font-medium truncate">{saldoUpdatedLabel}</span>
                 )}
@@ -376,7 +377,7 @@ export function DashboardView({
                           />
                         ))}
                       </div>
-                      <p className={cn("text-xs font-medium", h.color)}>Salud financiera: {h.label}</p>
+                      <p className="text-xs font-medium text-white">Salud financiera: {h.label}</p>
                     </div>
                   </div>
                 );
@@ -409,20 +410,20 @@ export function DashboardView({
             <div className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={data.chartData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }} barGap={4} barCategoryGap="30%">
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 700 }} dy={10} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#EDEDEE" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#88898D', fontSize: 10, fontWeight: 700 }} dy={10} />
                   <YAxis hide width={0} />
                   <Tooltip
-                    cursor={{ fill: '#F8FAFC' }}
+                    cursor={{ fill: '#F7F7F7' }}
                     contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', padding: '12px 16px' }}
                     formatter={(value: number, name: string) => [
                       formatCompact(value),
                       name === 'ingresos' ? 'Ingresos' : 'Egresos',
                     ]}
-                    labelStyle={{ fontWeight: 700, color: '#0F172A', marginBottom: 4 }}
+                    labelStyle={{ fontWeight: 700, color: '#53565A', marginBottom: 4 }}
                   />
-                  <Bar dataKey="ingresos" fill="#10B981" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="egresos" fill="#EF4444" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="ingresos" fill="#7A9A01" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="egresos" fill="#D86018" radius={[4, 4, 0, 0]} />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -439,7 +440,7 @@ export function DashboardView({
                   <PieChart>
                     {data.monthExpense === 0 || data.expensePie.every(e => e.value === 0)
                       ? <Pie data={[{ value: 1 }]} cx="50%" cy="50%" innerRadius={80} outerRadius={105} dataKey="value" isAnimationActive={false}>
-                          <Cell fill="#e2e8f0" />
+                          <Cell fill="#DBDCDE" />
                         </Pie>
                       : <Pie data={data.expensePie} cx="50%" cy="50%" innerRadius={80} outerRadius={105} paddingAngle={8} dataKey="value">
                           {data.expensePie.map((_, index) => (
@@ -492,7 +493,7 @@ export function DashboardView({
                     className={cn(
                       "p-4 sm:p-6 rounded-2xl sm:rounded-3xl border transition-all group",
                       isSynthetic
-                        ? "bg-amber-50 border-amber-200 cursor-default"
+                        ? "bg-brand-warning/5 border-brand-warning/20 cursor-default"
                         : alert.type === 'danger'
                           ? "bg-brand-danger/5 border-brand-danger/10 hover:bg-brand-danger/[0.08] hover:opacity-90 cursor-pointer"
                           : "bg-slate-50 border-slate-100 hover:bg-white hover:shadow-lg cursor-pointer"
@@ -500,11 +501,11 @@ export function DashboardView({
                   >
                     <div className="flex gap-4">
                       <div className={cn("p-3 rounded-2xl h-fit",
-                        isSynthetic ? "bg-amber-100 text-amber-600" :
+                        isSynthetic ? "bg-brand-warning/15 text-brand-warning" :
                         alert.type === 'danger' ? "bg-brand-danger/20" : "bg-slate-200 text-slate-600"
                       )}>
                         {isSynthetic
-                          ? <AlertCircle size={24} className="text-amber-600" />
+                          ? <AlertCircle size={24} className="text-brand-warning" />
                           : alert.type === 'danger'
                             ? <AlertCircle size={24} className="text-brand-danger" />
                             : <Clock size={24} />}
@@ -512,7 +513,7 @@ export function DashboardView({
                       <div className="flex-1">
                         <div className="flex justify-between">
                           <h4 className={cn("font-bold",
-                            isSynthetic ? "text-amber-700" :
+                            isSynthetic ? "text-brand-warning" :
                             alert.type === 'danger' ? "text-slate-900 group-hover:text-brand-danger transition-colors" : "text-slate-900"
                           )}>{alert.title}</h4>
                           {!isSynthetic && <ChevronRight size={18} className="text-slate-300 group-hover:translate-x-1 transition-transform" />}
@@ -521,7 +522,7 @@ export function DashboardView({
                           {alert.description}
                           {alert.amount > 0 && (
                             <span className={cn("ml-1 font-bold",
-                              isSynthetic ? "text-amber-600" :
+                              isSynthetic ? "text-brand-warning" :
                               alert.type === 'danger' ? "text-brand-danger" : "text-slate-700"
                             )} title={formatCurrency(alert.amount)}>
                               {formatCompact(alert.amount)}

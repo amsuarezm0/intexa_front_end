@@ -1,23 +1,23 @@
 export const CATEGORY_COLORS: Record<string, string> = {
-  'Tecnología':    'bg-blue-100 text-blue-700',
-  'Ventas':        'bg-emerald-100 text-emerald-700',
-  'Personal':      'bg-violet-100 text-violet-700',
-  'Finanzas':      'bg-amber-100 text-amber-700',
-  'Marketing':     'bg-pink-100 text-pink-700',
-  'Operaciones':   'bg-orange-100 text-orange-700',
-  'Legal':         'bg-red-100 text-red-700',
-  'Administración':'bg-teal-100 text-teal-700',
+  'Tecnología':    'badge-green',
+  'Ventas':        'badge-orange',
+  'Personal':      'badge-gray',
+  'Finanzas':      'badge-yellow',
+  'Marketing':     'badge-orange',
+  'Operaciones':   'badge-dark',
+  'Legal':         'badge-dark',
+  'Administración':'badge-green',
 };
 
 const FALLBACK_COLORS = [
-  'bg-blue-100 text-blue-700',
-  'bg-emerald-100 text-emerald-700',
-  'bg-violet-100 text-violet-700',
-  'bg-amber-100 text-amber-700',
-  'bg-pink-100 text-pink-700',
-  'bg-orange-100 text-orange-700',
-  'bg-teal-100 text-teal-700',
-  'bg-cyan-100 text-cyan-700',
+  'badge-green',
+  'badge-orange',
+  'badge-yellow',
+  'badge-dark',
+  'badge-gray',
+  'badge-orange',
+  'badge-green',
+  'badge-yellow',
 ];
 
 export function getCategoryColor(category: string): string {
@@ -27,12 +27,14 @@ export function getCategoryColor(category: string): string {
 }
 
 export const PIE_COLORS = [
-  '#3B82F6',
-  '#10B981',
-  '#8B5CF6',
-  '#F59E0B',
-  '#EC4899',
-  '#F97316',
-  '#14B8A6',
-  '#EF4444',
+  '#7A9A01', // brand-primary
+  '#D86018', // brand-accent
+  '#F2A900', // brand-warning
+  '#53565A', // brand-dark
+  '#88898D', // brand-secondary
+  '#38BDF8', // sky-400
+  '#A78BFA', // violet-400
+  '#F472B6', // pink-400
+  '#2DD4BF', // teal-400
+  '#FCD34D', // amber-300
 ];

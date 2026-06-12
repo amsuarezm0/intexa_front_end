@@ -211,18 +211,18 @@ export function ReportsView() {
           <div className="flex-1 min-h-[200px]">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={data.cashFlowChart.map(p => ({ ...p, net: p.ingresos - p.egresos }))} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} barGap={0}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 800 }} dy={8} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#DBDCDE" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#88898D', fontSize: 10, fontWeight: 800 }} dy={8} />
                 <YAxis hide />
-                <ReferenceLine y={0} stroke="#CBD5E1" strokeDasharray="4 4" />
+                <ReferenceLine y={0} stroke="#B8B8BB" strokeDasharray="4 4" />
                 <Tooltip
-                  cursor={{ fill: '#F1F5F9' }}
+                  cursor={{ fill: '#EDEDEE' }}
                   contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}
                   formatter={(value: number, name: string) => [formatCompact(value), name]}
                 />
-                <Bar dataKey="ingresos" name="Ingresos" fill="#10B981" radius={[8, 8, 0, 0]} barSize={24} />
-                <Bar dataKey="egresos" name="Egresos" fill="#EF4444" radius={[8, 8, 0, 0]} barSize={24} />
-                <Line dataKey="net" name="Neto" type="monotone" stroke="#6366F1" strokeWidth={2.5} dot={{ r: 4, fill: '#6366F1', strokeWidth: 0 }} activeDot={{ r: 6 }} />
+                <Bar dataKey="ingresos" name="Ingresos" fill="#7A9A01" radius={[8, 8, 0, 0]} barSize={24} />
+                <Bar dataKey="egresos" name="Egresos" fill="#D86018" radius={[8, 8, 0, 0]} barSize={24} />
+                <Line dataKey="net" name="Neto" type="monotone" stroke="#F2A900" strokeWidth={2.5} dot={{ r: 4, fill: '#F2A900', strokeWidth: 0 }} activeDot={{ r: 6 }} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -233,7 +233,7 @@ export function ReportsView() {
           <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-tight mb-8">{BREAKDOWN_SUBTITLE[period]}</p>
           <div className="space-y-8">
             {data.categoryBreakdown.map((cat, i) => {
-              const colors = ['bg-brand-primary', 'bg-brand-success', 'bg-blue-400', 'bg-brand-danger', 'bg-amber-400', 'bg-purple-400', 'bg-cyan-400', 'bg-rose-400', 'bg-teal-400', 'bg-orange-400'];
+              const colors = ['bg-brand-primary', 'bg-brand-accent', 'bg-brand-warning', 'bg-brand-dark', 'bg-brand-secondary', 'bg-sky-400', 'bg-violet-400', 'bg-pink-400', 'bg-teal-400', 'bg-amber-300'];
               return (
                 <div key={i} className="space-y-3">
                   <div className="flex justify-between text-[11px] font-bold text-slate-400 uppercase tracking-widest">

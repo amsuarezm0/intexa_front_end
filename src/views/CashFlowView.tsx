@@ -354,8 +354,8 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
             <div className="flex gap-4">
               <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-brand-success" /><span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">INGRESOS</span></div>
               <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-brand-danger" /><span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">EGRESOS</span></div>
-              <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-amber-400" /><span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">PENDIENTE</span></div>
-              <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-400" /><span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">PROYECTADO</span></div>
+              <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-brand-warning" /><span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">PENDIENTE</span></div>
+              <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-brand-dark" /><span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">PROYECTADO</span></div>
             </div>
           </div>
 
@@ -401,13 +401,13 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
                       {realEg > 0 && (
                         <span className="text-[10px] font-bold text-brand-danger leading-tight" title={`-${formatCurrency(realEg)}`}>-{formatCompact(realEg)}</span>
                       )}
-                      {pendInc > 0 && <span className="text-[10px] font-bold text-amber-500 leading-tight" title={`~+${formatCurrency(pendInc)}`}>~+{formatCompact(pendInc)}</span>}
-                      {pendEg  > 0 && <span className="text-[10px] font-bold text-amber-500 leading-tight" title={`~-${formatCurrency(pendEg)}`}>~-{formatCompact(pendEg)}</span>}
+                      {pendInc > 0 && <span className="text-[10px] font-bold text-brand-warning leading-tight" title={`~+${formatCurrency(pendInc)}`}>~+{formatCompact(pendInc)}</span>}
+                      {pendEg  > 0 && <span className="text-[10px] font-bold text-brand-warning leading-tight" title={`~-${formatCurrency(pendEg)}`}>~-{formatCompact(pendEg)}</span>}
                       {projIn > 0 && (
-                        <span className="text-[10px] font-bold text-blue-500 leading-tight" title={`~+${formatCurrency(projIn)}`}>~+{formatCompact(projIn)}</span>
+                        <span className="text-[10px] font-bold text-brand-dark leading-tight" title={`~+${formatCurrency(projIn)}`}>~+{formatCompact(projIn)}</span>
                       )}
                       {projEg > 0 && (
-                        <span className="text-[10px] font-bold text-blue-500 leading-tight" title={`~-${formatCurrency(projEg)}`}>~-{formatCompact(projEg)}</span>
+                        <span className="text-[10px] font-bold text-brand-dark leading-tight" title={`~-${formatCurrency(projEg)}`}>~-{formatCompact(projEg)}</span>
                       )}
                       {cell.txs.length > 1 && (
                         <span className="text-[9px] font-bold text-slate-400 mt-auto">{cell.txs.length} mov.</span>
@@ -421,7 +421,7 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
             /* Day view — compact summary cards */
             <div className="grid grid-cols-4 gap-3">
               {chartData.map((d, i) => {
-                const colors = ['text-slate-600', 'text-brand-success', 'text-brand-danger', 'text-blue-500'];
+                const colors = ['text-slate-600', 'text-brand-success', 'text-brand-danger', 'text-brand-primary'];
                 const hasIn  = d.ingresos > 0 || d.pendingIngresos > 0 || d.proyIngresos > 0;
                 const hasEg  = d.egresos > 0  || d.pendingEgresos > 0 || d.proyEgresos > 0;
                 return (
@@ -434,16 +434,16 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
                       <div className="rounded-xl px-3 py-2 bg-brand-success/5 space-y-0.5">
                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Ingresos</p>
                         {d.ingresos > 0 && <p className="text-sm font-extrabold text-brand-success" title={`+${formatCurrency(d.ingresos)}`}>+{formatCompact(d.ingresos)}</p>}
-                        {d.pendingIngresos > 0 && <p className="text-xs font-bold text-amber-500" title={`~+${formatCurrency(d.pendingIngresos)}`}>~+{formatCompact(d.pendingIngresos)}</p>}
-                        {d.proyIngresos > 0 && <p className="text-xs font-bold text-blue-500" title={`~+${formatCurrency(d.proyIngresos)}`}>~+{formatCompact(d.proyIngresos)}</p>}
+                        {d.pendingIngresos > 0 && <p className="text-xs font-bold text-brand-warning" title={`~+${formatCurrency(d.pendingIngresos)}`}>~+{formatCompact(d.pendingIngresos)}</p>}
+                        {d.proyIngresos > 0 && <p className="text-xs font-bold text-brand-dark" title={`~+${formatCurrency(d.proyIngresos)}`}>~+{formatCompact(d.proyIngresos)}</p>}
                       </div>
                     )}
                     {hasEg && (
                       <div className="rounded-xl px-3 py-2 bg-brand-danger/5 space-y-0.5">
                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Egresos</p>
                         {d.egresos > 0 && <p className="text-sm font-extrabold text-brand-danger" title={`-${formatCurrency(d.egresos)}`}>-{formatCompact(d.egresos)}</p>}
-                        {d.pendingEgresos > 0 && <p className="text-xs font-bold text-amber-500" title={`~-${formatCurrency(d.pendingEgresos)}`}>~-{formatCompact(d.pendingEgresos)}</p>}
-                        {d.proyEgresos > 0 && <p className="text-xs font-bold text-blue-500" title={`~-${formatCurrency(d.proyEgresos)}`}>~-{formatCompact(d.proyEgresos)}</p>}
+                        {d.pendingEgresos > 0 && <p className="text-xs font-bold text-brand-warning" title={`~-${formatCurrency(d.pendingEgresos)}`}>~-{formatCompact(d.pendingEgresos)}</p>}
+                        {d.proyEgresos > 0 && <p className="text-xs font-bold text-brand-dark" title={`~-${formatCurrency(d.proyEgresos)}`}>~-{formatCompact(d.proyEgresos)}</p>}
                       </div>
                     )}
                     {!hasIn && !hasEg && <p className="text-xs text-slate-300">—</p>}
@@ -464,14 +464,14 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
                     <div className="flex-1 flex flex-col gap-2">
                       <div className="flex-1 rounded-2xl border border-slate-100 bg-slate-50 flex flex-col items-center justify-center gap-0.5 p-2 min-h-[60px]">
                         {d.ingresos > 0 && <span className="text-[10px] font-bold text-brand-success" title={`+${formatCurrency(d.ingresos)}`}>+{formatCompact(d.ingresos)}</span>}
-                        {d.pendingIngresos > 0 && <span className="text-[10px] font-bold text-amber-500" title={`~+${formatCurrency(d.pendingIngresos)}`}>~+{formatCompact(d.pendingIngresos)}</span>}
-                        {d.proyIngresos > 0 && <span className="text-[10px] font-bold text-blue-500" title={`~+${formatCurrency(d.proyIngresos)}`}>~+{formatCompact(d.proyIngresos)}</span>}
+                        {d.pendingIngresos > 0 && <span className="text-[10px] font-bold text-brand-warning" title={`~+${formatCurrency(d.pendingIngresos)}`}>~+{formatCompact(d.pendingIngresos)}</span>}
+                        {d.proyIngresos > 0 && <span className="text-[10px] font-bold text-brand-dark" title={`~+${formatCurrency(d.proyIngresos)}`}>~+{formatCompact(d.proyIngresos)}</span>}
                         {d.ingresos === 0 && d.pendingIngresos === 0 && d.proyIngresos === 0 && <span className="text-[10px] font-bold text-slate-300">—</span>}
                       </div>
                       <div className="h-24 rounded-2xl border border-slate-100 bg-slate-50 flex flex-col items-center justify-center gap-0.5 p-2">
                         {d.egresos > 0 && <span className="text-[10px] font-bold text-brand-danger" title={`-${formatCurrency(d.egresos)}`}>-{formatCompact(d.egresos)}</span>}
-                        {d.pendingEgresos > 0 && <span className="text-[10px] font-bold text-amber-500" title={`~-${formatCurrency(d.pendingEgresos)}`}>~-{formatCompact(d.pendingEgresos)}</span>}
-                        {d.proyEgresos > 0 && <span className="text-[10px] font-bold text-blue-500" title={`~-${formatCurrency(d.proyEgresos)}`}>~-{formatCompact(d.proyEgresos)}</span>}
+                        {d.pendingEgresos > 0 && <span className="text-[10px] font-bold text-brand-warning" title={`~-${formatCurrency(d.pendingEgresos)}`}>~-{formatCompact(d.pendingEgresos)}</span>}
+                        {d.proyEgresos > 0 && <span className="text-[10px] font-bold text-brand-dark" title={`~-${formatCurrency(d.proyEgresos)}`}>~-{formatCompact(d.proyEgresos)}</span>}
                         {d.egresos === 0 && d.pendingEgresos === 0 && d.proyEgresos === 0 && <span className="text-[10px] font-bold text-slate-300">—</span>}
                       </div>
                     </div>
@@ -539,7 +539,7 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
             </button>
             {canWrite(user?.role) && (
               <>
-                <button onClick={onCreateProjection} className="flex items-center gap-2 bg-blue-500 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/20">
+                <button onClick={onCreateProjection} className="flex items-center gap-2 bg-brand-primary text-white px-5 py-2.5 rounded-xl font-bold hover:bg-brand-dark transition-all shadow-lg shadow-brand-primary/20">
                   <Plus size={20} /><span>Nueva Proyección</span>
                 </button>
                 <button onClick={onCreateMovement} className="flex items-center gap-2 bg-brand-dark text-white px-5 py-2.5 rounded-xl font-bold hover:bg-brand-accent transition-all shadow-lg shadow-brand-dark/20">
@@ -607,7 +607,7 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
                   </td>
                   <td className="hidden sm:table-cell px-3 sm:px-8 py-3 sm:py-6">
                     {m.isProjection ? (
-                      <span className="text-[10px] font-black px-2.5 py-1.5 rounded-lg uppercase tracking-widest border bg-blue-50 text-blue-500 border-blue-200">
+                      <span className="text-[10px] font-black px-2.5 py-1.5 rounded-lg uppercase tracking-widest border bg-brand-primary/10 text-brand-primary border-brand-primary/20">
                         Proyección
                       </span>
                     ) : (

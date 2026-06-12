@@ -8,7 +8,27 @@ import { Skeleton,SkeletonCard,SkeletonChart } from '../components/Skeleton';
 import { TransactionDetailDrawer } from '../components/TransactionDetailDrawer';
 import { useSettings } from '../contexts/SettingsContext';
 import { cn } from '../lib/utils';
-import { projectionsService,transactionsService,type ProjectionSummary,type Transaction } from '../services';
+import { projectionsService,searchService,transactionsService,type ProjectionAlert,type ProjectionSummary,type SearchDocument,type Transaction } from '../services';
+
+const FV_FC_RE = /^(FV|FC)-/i;
+
+function searchDocToTransaction(doc: SearchDocument, alert: ProjectionAlert): Transaction {
+  return {
+    id:           doc.id,
+    date:         doc.date,
+    description:  doc.reference || doc.description,
+    category:     doc.category,
+    type:         alert.color === 'brand-success' ? 'Ingreso' : 'Egreso',
+    amount:       doc.amount,
+    status:       doc.status as Transaction['status'],
+    reference:    doc.reference,
+    detail:       doc.description,
+    source:       'Siigo',
+    isProjection: false,
+    createdAt:    doc.date,
+    updatedAt:    doc.date,
+  };
+}
 
 const PERIODS = [30, 60, 90] as const;
 type Period = 30 | 60 | 90;
@@ -20,13 +40,21 @@ export function ProjectionsView({ onCreateProjection, user }: { onCreateProjecti
   const [chartPeriod, setChartPeriod] = useState<Period>(30);
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
   const [txLoading, setTxLoading] = useState(false);
-
-  function handleAlertClick(id: string) {
+  function handleAlertClick(alert: ProjectionAlert) {
     setSelectedTx(null);
     setTxLoading(true);
-    transactionsService.get(id)
-      .then(setSelectedTx)
-      .finally(() => setTxLoading(false));
+    // FV/FC alerts live in the invoices/purchases tables — search by document reference.
+    // Manual projection alerts live in transactions — look up directly by id.
+    const reference = alert.title.split(' · ')[0].trim();
+    if (FV_FC_RE.test(reference)) {
+      searchService.search(reference)
+        .then(docs => { if (docs[0]) setSelectedTx(searchDocToTransaction(docs[0], alert)); })
+        .finally(() => setTxLoading(false));
+    } else {
+      transactionsService.get(alert.id)
+        .then(setSelectedTx)
+        .finally(() => setTxLoading(false));
+    }
   }
 
   useEffect(() => {
@@ -107,20 +135,20 @@ export function ProjectionsView({ onCreateProjection, user }: { onCreateProjecti
               <div className="space-y-5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <TrendingUp size={14} className={isActive ? "text-emerald-400" : "text-brand-success"} />
+                    <TrendingUp size={14} className={isActive ? "text-white/80" : "text-brand-success"} />
                     <span className={cn("text-xs font-bold uppercase tracking-widest", isActive ? "text-white/60" : "text-slate-400")}>Ingresos</span>
                   </div>
-                  <span className={cn("text-sm font-extrabold", isActive ? "text-emerald-400" : "text-brand-success")} title={p ? formatCurrency(p.projectedIncome) : undefined}>
+                  <span className={cn("text-sm font-extrabold", isActive ? "text-white/90" : "text-brand-success")} title={p ? formatCurrency(p.projectedIncome) : undefined}>
                     {p ? formatCompact(p.projectedIncome) : '—'}
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <TrendingDown size={14} className={isActive ? "text-red-400" : "text-brand-danger"} />
+                    <TrendingDown size={14} className={isActive ? "text-white/80" : "text-brand-danger"} />
                     <span className={cn("text-xs font-bold uppercase tracking-widest", isActive ? "text-white/60" : "text-slate-400")}>Egresos</span>
                   </div>
-                  <span className={cn("text-sm font-extrabold", isActive ? "text-red-400" : "text-brand-danger")} title={p ? formatCurrency(p.projectedExpenses) : undefined}>
+                  <span className={cn("text-sm font-extrabold", isActive ? "text-brand-warning" : "text-brand-danger")} title={p ? formatCurrency(p.projectedExpenses) : undefined}>
                     {p ? formatCompact(p.projectedExpenses) : '—'}
                   </span>
                 </div>
@@ -151,7 +179,7 @@ export function ProjectionsView({ onCreateProjection, user }: { onCreateProjecti
           </div>
           <div className="flex gap-6">
             <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-brand-success" /><span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Saldo Disponible</span></div>
-            <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-[#EF444433]" /><span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Zona de Déficit</span></div>
+            <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-brand-danger/20" /><span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Zona de Déficit</span></div>
           </div>
         </div>
         <div className="h-[210px] sm:h-[280px]">
@@ -159,19 +187,19 @@ export function ProjectionsView({ onCreateProjection, user }: { onCreateProjecti
             <AreaChart data={chartData}>
               <defs>
                 <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10B981" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#7A9A01" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#7A9A01" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="colorDeficit" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#EF4444" stopOpacity={0.2} />
-                  <stop offset="95%" stopColor="#EF4444" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#D86018" stopOpacity={0.2} />
+                  <stop offset="95%" stopColor="#D86018" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-              <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} dy={10} />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#EDEDEE" />
+              <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#88898D' }} dy={10} />
               <YAxis hide />
               <Tooltip cursor={false} contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }} />
-              <Area type="monotone" dataKey="val" stroke="#10B981" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
+              <Area type="monotone" dataKey="val" stroke="#7A9A01" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
               <Area type="monotone" dataKey="deficit" stroke="transparent" fillOpacity={1} fill="url(#colorDeficit)" />
             </AreaChart>
           </ResponsiveContainer>
@@ -180,9 +208,11 @@ export function ProjectionsView({ onCreateProjection, user }: { onCreateProjecti
 
       {/* Ingresos / Egresos tables — driven by the selected period card */}
       <div className="space-y-3">
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
-          Proyección a {chartPeriod} días
-        </p>
+        <div className="px-1">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+            Proyección a {chartPeriod} días
+          </p>
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <ProjectionTable type="income"  rows={periodAlerts} onRowClick={handleAlertClick} />
           <ProjectionTable type="expense" rows={periodAlerts} onRowClick={handleAlertClick} />

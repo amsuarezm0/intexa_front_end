@@ -90,7 +90,7 @@ export function DashboardView({
   useEffect(() => {
     dashboardService.getSummary()
       .then(setData)
-      .catch(() => setError('No se pudo cargar el dashboard.'))
+      .catch((err: any) => setError(err.message ?? 'No se pudo cargar el dashboard.'))
       .finally(() => setIsLoading(false));
 
     dashboardService.getBankBalance()

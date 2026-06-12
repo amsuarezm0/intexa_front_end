@@ -11,15 +11,17 @@ interface Props {
 
 export function DeleteUserModal({ user, onSuccess, onClose }: Props) {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleDelete = async () => {
     setLoading(true);
+    setError('');
     try {
       await usersService.delete(user.id);
       onSuccess(user.id);
       onClose();
-    } catch {
-      // keep modal open on error
+    } catch (err: any) {
+      setError(err.message ?? 'No se pudo desactivar el usuario.');
     } finally {
       setLoading(false);
     }
@@ -44,6 +46,7 @@ export function DeleteUserModal({ user, onSuccess, onClose }: Props) {
           <p className="text-sm font-semibold text-slate-400">
             <span className="text-slate-700">{user.name}</span> perderá acceso al sistema. Esta acción puede revertirse.
           </p>
+          {error && <p className="text-xs font-semibold text-brand-danger bg-brand-danger/10 px-3 py-2 rounded-xl">{error}</p>}
         </div>
         <div className="flex gap-3">
           <button

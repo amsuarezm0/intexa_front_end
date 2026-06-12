@@ -41,16 +41,19 @@ export function SettingsView() {
       setSettings(s);
       setLogs(l);
     })
-    .catch(() => setError('No se pudo cargar la configuración.'))
+    .catch((err: any) => setError(err.message ?? 'No se pudo cargar la configuración.'))
     .finally(() => setIsLoading(false));
   }, []);
 
   const handleSaveSettings = async () => {
     setSaving(true);
+    setError('');
     try {
       const updated = await settingsService.update(settings);
       setSettings(updated);
       refreshSettings();
+    } catch (err: any) {
+      setError(err.message ?? 'Error al guardar la configuración.');
     } finally {
       setSaving(false);
     }

@@ -138,7 +138,7 @@ export function ReportsView() {
     setError('');
     reportsService.getSummary(period)
       .then(setData)
-      .catch(() => setError('No se pudo cargar los reportes.'))
+      .catch((err: any) => setError(err.message ?? 'No se pudo cargar los reportes.'))
       .finally(() => setIsLoading(false));
   }, [period]);
 

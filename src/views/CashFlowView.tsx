@@ -209,7 +209,7 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
       setSummary(prev => ({ ...prev, ...(s ?? {}) }));
       setProj30(p30?.estimatedBalance ?? 0);
     })
-    .catch(() => setError('No se pudo cargar el flujo de caja.'))
+    .catch((err: any) => setError(err.message ?? 'No se pudo cargar el flujo de caja.'))
     .finally(() => setIsLoading(false));
   }, []);
 

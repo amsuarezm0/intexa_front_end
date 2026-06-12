@@ -66,7 +66,7 @@ export function ProjectionsView({ onCreateProjection, user }: { onCreateProjecti
         results.forEach(([d, r]) => { map[d] = r; });
         setDataMap(map);
       })
-      .catch(() => setError('No se pudo cargar las proyecciones.'))
+      .catch((err: any) => setError(err.message ?? 'No se pudo cargar las proyecciones.'))
       .finally(() => setIsLoading(false));
   }, []);
 

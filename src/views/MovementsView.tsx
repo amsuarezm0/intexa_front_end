@@ -110,8 +110,8 @@ export function MovementsView({
       setTransactions(listRes.data);
       setTotal(listRes.total);
       setTotalPages(listRes.totalPages);
-    } catch {
-      setError('No se pudo cargar los movimientos.');
+    } catch (err: any) {
+      setError(err.message ?? 'No se pudo cargar los movimientos.');
     } finally {
       setIsInitialLoading(false);
       setIsFetching(false);
@@ -159,8 +159,8 @@ export function MovementsView({
         dateTo: dateTo || undefined,
       });
       await exportXLSX(res.data, formatCurrency);
-    } catch {
-      // silently fail — user can retry
+    } catch (err: any) {
+      setError(err.message ?? 'Error al exportar los movimientos.');
     } finally {
       setIsExporting(false);
     }

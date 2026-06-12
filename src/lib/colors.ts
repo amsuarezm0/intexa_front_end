@@ -27,11 +27,11 @@ export function getCategoryColor(category: string): string {
 }
 
 export const PIE_COLORS = [
-  '#7A9A01', // brand-primary
-  '#D86018', // brand-accent
-  '#F2A900', // brand-warning
-  '#53565A', // brand-dark
-  '#88898D', // brand-secondary
+  '#7A9A01', // brand-success (PANTONE 377 C)
+  '#D86018', // brand-accent  (PANTONE 1595 C)
+  '#F2A900', // brand-warning (PANTONE 130 C)
+  '#53565A', // brand-primary (PANTONE Cool Gray 11 C)
+  '#88898D', // brand-secondary (PANTONE Cool Gray 8 C)
   '#38BDF8', // sky-400
   '#A78BFA', // violet-400
   '#F472B6', // pink-400

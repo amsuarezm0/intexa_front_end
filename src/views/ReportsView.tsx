@@ -233,7 +233,7 @@ export function ReportsView() {
           <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-tight mb-8">{BREAKDOWN_SUBTITLE[period]}</p>
           <div className="space-y-8">
             {data.categoryBreakdown.map((cat, i) => {
-              const colors = ['bg-brand-primary', 'bg-brand-accent', 'bg-brand-warning', 'bg-brand-dark', 'bg-brand-secondary', 'bg-sky-400', 'bg-violet-400', 'bg-pink-400', 'bg-teal-400', 'bg-amber-300'];
+              const colors = ['bg-brand-success', 'bg-brand-accent', 'bg-brand-warning', 'bg-brand-primary', 'bg-brand-secondary', 'bg-sky-400', 'bg-violet-400', 'bg-pink-400', 'bg-teal-400', 'bg-amber-300'];
               return (
                 <div key={i} className="space-y-3">
                   <div className="flex justify-between text-[11px] font-bold text-slate-400 uppercase tracking-widest">

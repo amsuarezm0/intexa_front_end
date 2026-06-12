@@ -78,7 +78,7 @@ export function SettingsView() {
             </div>
             <button
               onClick={() => setShowAddUser(true)}
-              className="flex items-center gap-2 bg-brand-success text-white px-6 py-3.5 rounded-2xl font-bold hover:bg-emerald-600 transition-all shadow-lg shadow-brand-success/20"
+              className="flex items-center gap-2 bg-brand-success text-white px-6 py-3.5 rounded-2xl font-bold hover:bg-brand-dark transition-all shadow-lg shadow-brand-success/20"
             >
               <UserPlus size={20} /><span>Añadir Usuario</span>
             </button>
@@ -148,7 +148,7 @@ export function SettingsView() {
                 </div>
                 <button
                   onClick={() => setSettings(s => ({ ...s, autoExchangeRate: !s.autoExchangeRate }))}
-                  className={cn("w-14 h-8 rounded-full p-1 relative cursor-pointer shadow-inner transition-colors", settings.autoExchangeRate ? "bg-brand-success shadow-green-700/20" : "bg-slate-200")}
+                  className={cn("w-14 h-8 rounded-full p-1 relative cursor-pointer shadow-inner transition-colors", settings.autoExchangeRate ? "bg-brand-success shadow-brand-success/20" : "bg-slate-200")}
                 >
                   <div className={cn("w-6 h-6 bg-white rounded-full shadow-lg transition-all", settings.autoExchangeRate ? "translate-x-6" : "translate-x-0")} />
                 </button>

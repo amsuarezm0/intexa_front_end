@@ -106,11 +106,8 @@ export function TransactionFilters({ show, filters, showDateFilter, onChange, on
                       className={cn(
                         'px-3 py-1.5 rounded-lg text-xs font-bold border transition-all',
                         record === v
-                          ? v === 'Proyección' ? 'bg-blue-500 text-white border-blue-500'
-                            : 'bg-brand-primary text-white border-brand-primary'
-                          : v === 'Proyección'
-                            ? 'bg-slate-50 text-slate-500 border-slate-200 hover:border-blue-300 hover:text-blue-500 hover:bg-blue-50'
-                            : 'bg-slate-50 text-slate-500 border-slate-200 hover:border-slate-300'
+                          ? 'bg-brand-primary text-white border-brand-primary'
+                          : 'bg-slate-50 text-slate-500 border-slate-200 hover:border-brand-primary/40 hover:text-brand-primary hover:bg-brand-primary/5'
                       )}>{v}</button>
                   ))}
                 </div>
@@ -163,7 +160,7 @@ export function TransactionFilters({ show, filters, showDateFilter, onChange, on
             <Chip color="primary" onRemove={() => onChange({ source: '' })}>{source}</Chip>
           )}
           {record && (
-            <Chip color={record === 'Proyección' ? 'blue' : 'primary'} onRemove={() => onChange({ record: '' })}>
+            <Chip color="primary" onRemove={() => onChange({ record: '' })}>
               {record}
             </Chip>
           )}
@@ -178,14 +175,13 @@ export function TransactionFilters({ show, filters, showDateFilter, onChange, on
   );
 }
 
-type ChipColor = 'success' | 'warning' | 'primary' | 'danger' | 'blue' | 'slate';
+type ChipColor = 'success' | 'warning' | 'primary' | 'danger' | 'slate';
 
 const chipClass: Record<ChipColor, string> = {
   success: 'bg-brand-success/10 text-brand-success',
   warning: 'bg-brand-warning/10 text-brand-warning',
   primary: 'bg-brand-primary/10 text-brand-primary',
   danger:  'bg-brand-danger/10  text-brand-danger',
-  blue:    'bg-blue-100 text-blue-500',
   slate:   'bg-slate-100 text-slate-500',
 };
 

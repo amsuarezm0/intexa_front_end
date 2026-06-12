@@ -350,7 +350,7 @@ import type { NotificationItem } from '../services';
 function NotifItem({ item, formatCurrency }: { item: NotificationItem; formatCurrency: (n: number) => string }) {
   const urgencyColors = {
     overdue:  { dot: 'bg-brand-danger',  text: 'text-brand-danger',  label: item.daysOverdue === 1 ? '1 día vencido' : `${item.daysOverdue} días vencido` },
-    'due-soon': { dot: 'bg-amber-400',   text: 'text-amber-500',    label: item.daysOverdue === 0 ? 'Vence hoy' : `Vence en ${-item.daysOverdue}d` },
+    'due-soon': { dot: 'bg-brand-warning', text: 'text-brand-warning', label: item.daysOverdue === 0 ? 'Vence hoy' : `Vence en ${-item.daysOverdue}d` },
     upcoming:  { dot: 'bg-slate-300',   text: 'text-slate-400',    label: `Vence en ${-item.daysOverdue}d` },
   };
   const style = urgencyColors[item.urgency];

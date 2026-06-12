@@ -14,5 +14,5 @@ export interface SearchDocument {
 }
 
 export const searchService = {
-  search: (q: string) => api.get<SearchDocument[]>(`/search?q=${encodeURIComponent(q)}`),
+  search: (reference: string) => api.get<SearchDocument[]>(`/search?reference=${encodeURIComponent(reference)}`),
 };

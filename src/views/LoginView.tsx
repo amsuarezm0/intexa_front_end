@@ -49,7 +49,7 @@ export function LoginView({ onLogin }: LoginViewProps) {
   };
 
   return (
-    <div className="min-h-screen bg-[#F4F7FA] flex flex-col relative overflow-hidden">
+    <div className="min-h-screen bg-brand-bg flex flex-col relative overflow-hidden">
       <div className="absolute inset-0 opacity-10 pointer-events-none">
         <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-brand-primary rounded-full blur-[120px] -mr-96 -mt-96" />
         <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-brand-success rounded-full blur-[100px] -ml-48 -mb-48 opacity-50" />

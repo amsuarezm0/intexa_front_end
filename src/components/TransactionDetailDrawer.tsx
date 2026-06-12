@@ -377,7 +377,7 @@ export function TransactionDetailDrawer({ transaction, isLoading, onClose, onDel
                     <button
                       onClick={handleDelete}
                       disabled={deleting}
-                      className="flex-1 px-4 py-2.5 rounded-xl bg-brand-danger text-white text-sm font-bold hover:bg-red-600 transition-colors disabled:opacity-60"
+                      className="flex-1 px-4 py-2.5 rounded-xl bg-brand-danger text-white text-sm font-bold hover:bg-brand-dark transition-colors disabled:opacity-60"
                     >
                       {deleting ? 'Eliminando…' : 'Eliminar'}
                     </button>

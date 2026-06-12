@@ -3,15 +3,29 @@
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  
-  --color-brand-sidebar: #FFFFFF;
-  --color-brand-bg: #F8FAFC;
-  --color-brand-dark: #002244;
-  --color-brand-primary: #003366;
-  --color-brand-accent: #002B5B;
-  --color-brand-success: #10B981;
-  --color-brand-danger: #EF4444;
-  --color-brand-warning: #F59E0B;
+
+  /* ── Pantone brand palette ───────────────────────────────────────────────── */
+  --color-brand-sidebar:   #FFFFFF;
+  --color-brand-bg:        #F7F7F7;
+  --color-brand-primary:   #7A9A01;  /* PANTONE 377 C      */
+  --color-brand-accent:    #D86018;  /* PANTONE 1595 C     */
+  --color-brand-dark:      #53565A;  /* PANTONE Cool Gray 11 C */
+  --color-brand-secondary: #88898D;  /* PANTONE Cool Gray 8 C  */
+  --color-brand-warning:   #F2A900;  /* PANTONE 130 C      */
+  --color-brand-success:   #7A9A01;  /* PANTONE 377 C — positive */
+  --color-brand-danger:    #D86018;  /* PANTONE 1595 C — negative */
+
+  /* ── Slate → Pantone Cool Gray scale ────────────────────────────────────── */
+  --color-slate-50:  #F7F7F7;
+  --color-slate-100: #EDEDEE;
+  --color-slate-200: #DBDCDE;
+  --color-slate-300: #B8B8BB;
+  --color-slate-400: #88898D;  /* PANTONE Cool Gray 8 C  */
+  --color-slate-500: #6E7074;
+  --color-slate-600: #53565A;  /* PANTONE Cool Gray 11 C */
+  --color-slate-700: #43464A;
+  --color-slate-800: #34373A;
+  --color-slate-900: #232528;
 }
 
 @layer base {
@@ -33,10 +47,17 @@
   .card-shadow {
     box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
   }
-  
+
   .sidebar-item-active {
     @apply bg-brand-bg text-brand-primary font-medium;
   }
+
+  /* Category badge variants — Pantone brand palette */
+  .badge-green  { background-color: #EEF3D1; color: #7A9A01; } /* PANTONE 377 C  */
+  .badge-orange { background-color: #FAECD9; color: #D86018; } /* PANTONE 1595 C */
+  .badge-yellow { background-color: #FEF5D9; color: #A07000; } /* PANTONE 130 C  */
+  .badge-dark   { background-color: #E8E8E9; color: #53565A; } /* Cool Gray 11 C */
+  .badge-gray   { background-color: #EFEFEF; color: #606163; } /* Cool Gray 8 C  */
 }
 
 /* Hide scrollbar for Chrome, Safari and Opera */

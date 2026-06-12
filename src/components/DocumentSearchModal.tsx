@@ -8,8 +8,8 @@ import { cn } from '../lib/utils';
 const DOC_ICONS: Record<string, React.ReactNode> = {
   RC: <ArrowDownCircle size={16} className="text-brand-success" />,
   RP: <ArrowUpCircle size={16} className="text-brand-danger" />,
-  FV: <FileText size={16} className="text-blue-500" />,
-  FC: <ShoppingCart size={16} className="text-amber-500" />,
+  FV: <FileText size={16} className="text-brand-success" />,
+  FC: <ShoppingCart size={16} className="text-brand-danger" />,
 };
 
 const DOC_LABELS: Record<string, string> = {

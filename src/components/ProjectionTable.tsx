@@ -5,7 +5,7 @@ import type { ProjectionAlert } from '../services';
 interface Props {
   type:       'income' | 'expense';
   rows:       ProjectionAlert[];
-  onRowClick: (id: string) => void;
+  onRowClick: (alert: ProjectionAlert) => void;
 }
 
 export function ProjectionTable({ type, rows, onRowClick }: Props) {
@@ -42,7 +42,7 @@ export function ProjectionTable({ type, rows, onRowClick }: Props) {
         ) : filtered.map(row => (
           <div
             key={row.id}
-            onClick={() => onRowClick(row.id)}
+            onClick={() => onRowClick(row)}
             className="flex items-center gap-3 px-6 py-3.5 hover:bg-slate-50 transition-colors cursor-pointer"
           >
             <div className="flex-1 min-w-0">

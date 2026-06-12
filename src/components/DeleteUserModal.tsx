@@ -55,7 +55,7 @@ export function DeleteUserModal({ user, onSuccess, onClose }: Props) {
           <button
             onClick={handleDelete}
             disabled={loading}
-            className="flex-1 py-4 rounded-2xl font-bold bg-brand-danger text-white hover:bg-red-600 transition-all disabled:opacity-60"
+            className="flex-1 py-4 rounded-2xl font-bold bg-brand-danger text-white hover:bg-brand-dark transition-all disabled:opacity-60"
           >
             {loading ? 'Desactivando...' : 'Desactivar'}
           </button>

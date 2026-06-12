@@ -539,7 +539,7 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
             </button>
             {canWrite(user?.role) && (
               <>
-                <button onClick={onCreateProjection} className="flex items-center gap-2 bg-brand-primary text-white px-5 py-2.5 rounded-xl font-bold hover:bg-brand-dark transition-all shadow-lg shadow-brand-primary/20">
+                <button onClick={onCreateProjection} className="flex items-center gap-2 bg-brand-warning text-white px-5 py-2.5 rounded-xl font-bold hover:bg-brand-accent transition-all shadow-lg shadow-brand-warning/20">
                   <Plus size={20} /><span>Nueva Proyección</span>
                 </button>
                 <button onClick={onCreateMovement} className="flex items-center gap-2 bg-brand-dark text-white px-5 py-2.5 rounded-xl font-bold hover:bg-brand-accent transition-all shadow-lg shadow-brand-dark/20">

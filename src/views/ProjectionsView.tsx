@@ -97,7 +97,7 @@ export function ProjectionsView({ onCreateProjection, user }: { onCreateProjecti
         </div>
         <button
           onClick={onCreateProjection}
-          className="flex items-center gap-2 bg-brand-dark text-white px-5 py-2.5 rounded-xl font-bold hover:bg-brand-accent transition-colors shadow-lg shadow-brand-dark/20 text-sm"
+          className="flex items-center gap-2 bg-brand-warning text-white px-5 py-2.5 rounded-xl font-bold hover:bg-brand-accent transition-colors shadow-lg shadow-brand-warning/20 text-sm"
         >
           <Plus size={18} /><span>Agregar proyección manual</span>
         </button>

@@ -134,10 +134,7 @@ export function MovementsView({
     setPage(1);
   }, [initialSearch]);
 
-  useEffect(() => {
-    const t = setTimeout(() => { setSearch(searchInput); setPage(1); }, 400);
-    return () => clearTimeout(t);
-  }, [searchInput]);
+  function submitSearch() { setSearch(searchInput); setPage(1); }
 
   useEffect(() => {
     if (!initialSelectedId) return;
@@ -208,33 +205,14 @@ export function MovementsView({
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Movimientos</h1>
           <p className="text-slate-500 font-medium tracking-tight">Gestión detallada de ingresos y egresos de Intexa ArCa.</p>
         </div>
-        <div className="flex gap-3">
-          <button
-            onClick={handleExport}
-            disabled={isExporting}
-            className="flex items-center gap-2 bg-slate-100 text-slate-600 px-5 py-2.5 rounded-xl font-bold hover:bg-slate-200 transition-colors disabled:opacity-60"
-          >
-            <Download size={18} />
-            <span>{isExporting ? 'Exportando...' : 'Exportar'}</span>
-          </button>
-          <button
-            onClick={() => setShowFilters(v => !v)}
-            className={cn(
-              "flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-colors relative",
-              showFilters || activeFilterCount > 0
-                ? "bg-brand-primary text-white shadow-lg shadow-brand-primary/20"
-                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-            )}
-          >
-            <Filter size={18} />
-            <span>Filtros</span>
-            {activeFilterCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-brand-danger text-white text-[10px] font-black rounded-full flex items-center justify-center">
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
-        </div>
+        <button
+          onClick={handleExport}
+          disabled={isExporting}
+          className="flex items-center gap-2 bg-slate-100 text-slate-600 px-5 py-2.5 rounded-xl font-bold hover:bg-slate-200 transition-colors disabled:opacity-60"
+        >
+          <Download size={18} />
+          <span>{isExporting ? 'Exportando...' : 'Exportar'}</span>
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -276,19 +254,46 @@ export function MovementsView({
 
       <div className={cn("bg-white rounded-3xl sm:rounded-[40px] border border-slate-100 card-shadow overflow-hidden transition-opacity", isFetching && "opacity-60 pointer-events-none")}>
         {/* Search + action row */}
-        <div className="p-4 sm:p-8 border-b border-slate-100 flex justify-between items-center gap-4">
-          <div className="relative">
-            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              value={searchInput}
-              onChange={e => { setSearchInput(e.target.value); setPage(1); }}
-              placeholder="Buscar movimientos..."
-              className="pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:border-brand-primary outline-none transition-all w-64"
-            />
+        <div className="p-4 sm:p-8 border-b border-slate-100 flex justify-between items-center gap-3">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <form onSubmit={e => { e.preventDefault(); submitSearch(); }} className="flex items-center">
+              <div className="relative">
+                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchInput}
+                  onChange={e => setSearchInput(e.target.value)}
+                  placeholder="Buscar movimientos..."
+                  className="pl-10 pr-4 py-2 border border-slate-200 rounded-l-xl text-sm focus:border-brand-primary outline-none transition-all w-48 sm:w-56"
+                />
+              </div>
+              <button
+                type="submit"
+                className="px-3 py-2 bg-brand-primary text-white text-sm font-bold rounded-r-xl hover:bg-brand-accent transition-colors border border-brand-primary"
+              >
+                Buscar
+              </button>
+            </form>
+            <button
+              onClick={() => setShowFilters(v => !v)}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-colors relative shrink-0",
+                showFilters || activeFilterCount > 0
+                  ? "bg-brand-primary text-white shadow-md shadow-brand-primary/20"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              )}
+            >
+              <Filter size={16} />
+              <span className="hidden sm:inline">Filtros</span>
+              {activeFilterCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-brand-danger text-white text-[10px] font-black rounded-full flex items-center justify-center">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
           </div>
           {canWrite(user?.role) && (
-            <button onClick={onCreateMovement} className="bg-brand-dark text-white p-3 rounded-2xl hover:bg-brand-accent transition-all">
+            <button onClick={onCreateMovement} className="bg-brand-dark text-white p-3 rounded-2xl hover:bg-brand-accent transition-all shrink-0">
               <Plus size={20} />
             </button>
           )}

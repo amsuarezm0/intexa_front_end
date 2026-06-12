@@ -17,6 +17,7 @@ export interface SiigoSyncResult {
   vouchersImported: number;
   paymentReceiptsImported: number;
   updated: number;
+  errors?: string[];
 }
 
 export const siigoService = {

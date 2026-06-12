@@ -1,4 +1,5 @@
 import {
+AlertTriangle,
 ArrowLeftRight,
 BarChart3,
 Bell,
@@ -15,10 +16,11 @@ X,
 } from 'lucide-react';
 import { useEffect,useRef,useState,type ReactNode } from 'react';
 import type { LoggedInUser } from '../App';
+import { SyncResultModal } from '../components/SyncResultModal';
 import { useSettings } from '../contexts/SettingsContext';
 import { canWrite } from '../lib/roles';
 import { cn } from '../lib/utils';
-import { notificationsService,siigoService,type NotificationSummary,type SiigoSyncMode } from '../services';
+import { notificationsService,siigoService,type NotificationSummary,type SiigoSyncMode,type SiigoSyncResult } from '../services';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -31,7 +33,8 @@ interface MainLayoutProps {
 }
 
 export function MainLayout({ children, currentView, onNavigate, onLogout, onSyncSuccess, onSearch, user }: MainLayoutProps) {
-  const [syncState, setSyncState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [syncState, setSyncState] = useState<'idle' | 'loading' | 'success' | 'partial' | 'error'>('idle');
+  const [syncResult, setSyncResult] = useState<SiigoSyncResult | null>(null);
   const [showSyncMenu, setShowSyncMenu] = useState(false);
   const [headerSearch, setHeaderSearch] = useState('');
   const getToday = () => new Date().toISOString().split('T')[0];
@@ -68,10 +71,15 @@ export function MainLayout({ children, currentView, onNavigate, onLogout, onSync
     setShowSyncMenu(false);
     setShowBootstrapInput(false);
     try {
-      await siigoService.sync({ mode, dateStart });
-      setSyncState('success');
+      const result = await siigoService.sync({ mode, dateStart });
       onSyncSuccess?.();
-      setTimeout(() => setSyncState('idle'), 3000);
+      if ((result.errors?.length ?? 0) > 0) {
+        setSyncState('partial');
+        setSyncResult(result);
+      } else {
+        setSyncState('success');
+        setTimeout(() => setSyncState('idle'), 3000);
+      }
     } catch {
       setSyncState('error');
       setTimeout(() => setSyncState('idle'), 3000);
@@ -190,17 +198,26 @@ export function MainLayout({ children, currentView, onNavigate, onLogout, onSync
                 syncState === 'idle' && "bg-brand-primary/10 text-brand-primary",
                 syncState === 'loading' && "bg-brand-primary/10 text-brand-primary opacity-70",
                 syncState === 'success' && "bg-brand-success/10 text-brand-success",
+                syncState === 'partial' && "bg-brand-warning/10 text-brand-warning",
                 syncState === 'error' && "bg-brand-danger/10 text-brand-danger",
               )}>
                 <button
-                  onClick={() => handleSyncSiigo('incremental')}
+                  onClick={() => syncState === 'partial' && syncResult ? setSyncResult(syncResult) : handleSyncSiigo('incremental')}
                   disabled={syncState === 'loading'}
                   title="Sincronizar Siigo (últimos 90 días)"
                   className="flex items-center gap-2 px-3 sm:px-4 py-2 hover:brightness-90 transition-all disabled:cursor-not-allowed"
                 >
-                  {syncState === 'success' ? <CheckCircle2 size={16} /> : <RefreshCw size={16} className={cn(syncState === 'loading' && "animate-spin")} />}
+                  {syncState === 'success' && <CheckCircle2 size={16} />}
+                  {syncState === 'partial' && <AlertTriangle size={16} />}
+                  {(syncState === 'idle' || syncState === 'loading' || syncState === 'error') && (
+                    <RefreshCw size={16} className={cn(syncState === 'loading' && "animate-spin")} />
+                  )}
                   <span className="hidden sm:inline">
-                    {syncState === 'loading' ? 'Sincronizando...' : syncState === 'success' ? 'Sincronizado' : syncState === 'error' ? 'Error' : 'Sincronizar'}
+                    {syncState === 'loading' ? 'Sincronizando...'
+                      : syncState === 'success' ? 'Sincronizado'
+                      : syncState === 'partial' ? 'Parcial'
+                      : syncState === 'error' ? 'Error'
+                      : 'Sincronizar'}
                   </span>
                 </button>
                 <button
@@ -339,6 +356,14 @@ export function MainLayout({ children, currentView, onNavigate, onLogout, onSync
           {children}
         </div>
       </main>
+
+      {/* Sync result modal — shown only on partial sync (has page errors) */}
+      {syncResult && (
+        <SyncResultModal
+          result={syncResult}
+          onClose={() => { setSyncResult(null); setSyncState('idle'); }}
+        />
+      )}
     </div>
   );
 }

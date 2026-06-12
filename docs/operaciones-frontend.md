@@ -153,7 +153,9 @@ El token de Siigo expira cada 24 horas. Al conectarse, se lanza una goroutine (`
 
 ```
 POST /api/v1/siigo/sync  { mode, dateStart?, dateEnd? }
-→ { mode, dateStart, dateEnd, invoicesImported, purchasesImported, updated }
+→ { mode, dateStart, dateEnd,
+    invoicesImported, purchasesImported,
+    vouchersImported, paymentReceiptsImported, updated }
 ```
 
 | Campo | Requerido | Descripción |
@@ -161,6 +163,18 @@ POST /api/v1/siigo/sync  { mode, dateStart?, dateEnd? }
 | `mode` | sí | `"incremental"` · `"reconcile"` · `"bootstrap"` |
 | `dateStart` | solo bootstrap | Fecha de inicio `YYYY-MM-DD` |
 | `dateEnd` | no | Por defecto: hoy |
+
+Los 4 tipos de documento se sincronizan en paralelo. Dentro de cada tipo, las páginas adicionales también se descargan en paralelo (máximo 8 goroutines concurrentes, 100 registros por página, hasta 3 reintentos por página).
+
+| Campo respuesta | Tipo doc | Tabla destino |
+|---|---|---|
+| `invoicesImported` | FV — Facturas de Venta | `invoices` |
+| `purchasesImported` | FC — Facturas de Compra | `purchases` |
+| `vouchersImported` | RC — Recibos de Cobro | `transactions` (Ingreso, Completado) |
+| `paymentReceiptsImported` | RP — Recibos de Pago | `transactions` (Egreso, Completado) |
+| `updated` | todos | Registros actualizados (no nuevos) |
+
+El log de actividad registra: `Sync Siigo [mode] (+N FV, +N FC, +N RC, +N RP, ~N actualizados)`.
 
 ---
 

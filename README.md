@@ -6,7 +6,7 @@ Financial management platform for cash flow control, transaction tracking, proje
 
 ## Features
 
-- **Dashboard** — real-time KPIs: current balance, monthly income/expenses, net flow, cash flow chart, expense distribution by category, and liquidity alerts.
+- **Dashboard** — real-time KPIs: current balance, monthly income/expenses, net flow, cash flow chart, full expense distribution by category (all categories, palette colors for top 5 then extended colors), and liquidity alerts.
 - **Movements** — paginated transaction list with search, type/status filters, CSV export, and color-coded category badges.
 - **Cash Flow** — day/week/month navigator showing ingresos and egresos per period, projected 30-day balance, and liquidity alerts.
 - **Projections** — forward-looking financial scenarios and simulations.
@@ -19,7 +19,7 @@ Financial management platform for cash flow control, transaction tracking, proje
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 19, TypeScript, Vite 6 |
+| Frontend | React 19, TypeScript, Vite 8 |
 | Styling | Tailwind CSS 4, Lucide icons |
 | Charts | Recharts |
 | Animation | Motion (Framer Motion) |

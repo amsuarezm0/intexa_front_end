@@ -400,7 +400,7 @@ Ejemplo:
   catMap["Servicios"] = 1_200_000  → pct = 25.0%
 ```
 
-**Paso 3** — ordenar descendente y recortar a top 5.
+**Paso 3** — ordenar descendente. Se devuelven todas las categorías con porcentaje > 0. El ajuste de redondeo se aplica a la primera categoría para que la suma sea exactamente 100.
 
 El centro del donut muestra `formatCurrency(egresosMes)`.
 
@@ -434,12 +434,13 @@ Si total_w = 0 → ambos anchos = 0% (evita división por cero)
 ```
 ratio = netFlow / monthIncome
 
-ratio ≥  0.20 → "Óptima"    (5 barras, verde)
-ratio ≥  0.05 → "Buena"     (4 barras, esmeralda)
-ratio ≥  0.00 → "Estable"   (3 barras, amarillo)
-ratio ≥ -0.10 → "En riesgo" (2 barras, naranja)
-ratio <  -0.10 → "Crítica"  (1 barra,  rojo)
-monthIncome = 0 → "Sin datos" (0 barras)
+ratio ≥  0.20 → "Óptima"    (5 barras, brand-success)
+ratio ≥  0.05 → "Buena"     (4 barras, brand-warning)
+ratio ≥  0.00 → "Estable"   (3 barras, brand-secondary)
+ratio ≥ -0.10 → "En riesgo" (2 barras, brand-dark)
+ratio <  -0.10 → "Crítica"  (1 barra,  brand-danger)
+monthIncome = 0 y netFlow ≥ 0 → "Sin datos" (0 barras)
+monthIncome = 0 y netFlow < 0 → "Crítica"   (1 barra,  brand-danger)
 ```
 
 ### 2.9 Alertas de control
@@ -548,8 +549,8 @@ title = "Saldo pendiente: " + formatCurrency(tx.balance)
 |---|---|
 | Completado | Verde (`brand-success`) |
 | Parcial | Ámbar (`brand-warning`) |
-| Pendiente | Azul (`brand-primary`) |
-| Anulado | Rojo (`brand-danger`) |
+| Pendiente | Gris (`brand-primary`) |
+| Anulado | Naranja (`brand-danger`) |
 
 ### 3.5 Paginación
 
@@ -742,7 +743,7 @@ activeFilters = (type≠'' ? 1:0) + (status≠'' ? 1:0) + (source≠'' ? 1:0) + 
 - Clic en tarjeta de período → cambia gráfico y alertas al horizonte seleccionado
 - Hover en valores → tooltip con valor completo
 - Clic en alerta → `TransactionDetailDrawer`
-- "Agregar proyección manual" → `CreateProjectionView`
+- "Agregar proyección manual" (CTA amarillo, `brand-warning`) → `CreateProjectionView`
 
 ### 5.1 Carga de datos
 
@@ -1112,7 +1113,7 @@ para cada egreso en el rango [from, to] (no proyección, no cancelado):
 pct(cat) = round(catMap[cat] / total × 1000) / 10
 ```
 
-Ordenado descendente, máximo 6 categorías. Ancho de barra: `width: ${cat.value}%`.
+Ordenado descendente. Se muestran todas las categorías con porcentaje > 0. Las primeras 5 usan los colores de la paleta Pantone (`brand-success`, `brand-accent`, `brand-warning`, `brand-primary`, `brand-secondary`); las siguientes usan colores extendidos (sky, violet, pink, teal, amber). Ancho de barra: `width: ${cat.value}%`.
 
 ### 8.6 Tabla de comparación por categoría — variación
 

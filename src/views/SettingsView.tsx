@@ -9,6 +9,7 @@ import { Skeleton,SkeletonCard } from '../components/Skeleton';
 import { UserCard } from '../components/UserCard';
 import { UserFormModal } from '../components/UserFormModal';
 import { useSettings } from '../contexts/SettingsContext';
+import { useToast } from '../contexts/ToastContext';
 import { getStoredUser } from '../lib/api';
 import { cn } from '../lib/utils';
 import { settingsService,usersService,type ActivityLog,type Settings,type User } from '../services';
@@ -17,6 +18,7 @@ export function SettingsView() {
   const currentUser = getStoredUser();
   const isAdmin = currentUser?.role?.toUpperCase() === 'ADMINISTRADOR';
 
+  const toast = useToast();
   const [users, setUsers] = useState<User[]>([]);
   const [settings, setSettings] = useState<Settings>({ baseCurrency: 'COP', autoExchangeRate: true });
   const [logs, setLogs] = useState<ActivityLog[]>([]);
@@ -47,13 +49,12 @@ export function SettingsView() {
 
   const handleSaveSettings = async () => {
     setSaving(true);
-    setError('');
     try {
       const updated = await settingsService.update(settings);
       setSettings(updated);
       refreshSettings();
     } catch (err: any) {
-      setError(err.message ?? 'Error al guardar la configuración.');
+      toast.error(err.message ?? 'Error al guardar la configuración.');
     } finally {
       setSaving(false);
     }

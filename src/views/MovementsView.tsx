@@ -17,6 +17,7 @@ import { Pagination } from '../components/Pagination';
 import { TransactionDetailDrawer } from '../components/TransactionDetailDrawer';
 import { TransactionFilters, type TxFilters, type TxTypeFilter, type TxStatusFilter, type TxSourceFilter, type TxRecordFilter } from '../components/TransactionFilters';
 import { useSettings } from '../contexts/SettingsContext';
+import { useToast } from '../contexts/ToastContext';
 import { canWrite } from '../lib/roles';
 import { cn } from '../lib/utils';
 import { transactionsService,type Transaction,type TransactionSummary } from '../services';
@@ -93,6 +94,7 @@ export function MovementsView({
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
 
   const { formatCurrency, formatCompact } = useSettings();
+  const toast = useToast();
 
   const fetchSummary = useCallback(async () => {
     try {
@@ -160,7 +162,7 @@ export function MovementsView({
       });
       await exportXLSX(res.data, formatCurrency);
     } catch (err: any) {
-      setError(err.message ?? 'Error al exportar los movimientos.');
+      toast.error(err.message ?? 'Error al exportar los movimientos.');
     } finally {
       setIsExporting(false);
     }

@@ -1,6 +1,7 @@
 import { ArrowDownLeft,ArrowUpRight,Calendar,Check,Database,Hash,Pencil,Tag,Trash2,X } from 'lucide-react';
 import { AnimatePresence,motion } from 'motion/react';
 import { useEffect,useState } from 'react';
+import { useToast } from '../contexts/ToastContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { cn } from '../lib/utils';
 import { categoriesService,type Category,type Transaction,transactionsService } from '../services';
@@ -18,11 +19,11 @@ interface Props {
 
 export function TransactionDetailDrawer({ transaction, isLoading, onClose, onDeleted, onUpdated, canWrite = true }: Props) {
   const { formatCurrency } = useSettings();
+  const toast = useToast();
   const [showConfirm, setShowConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [actionError, setActionError] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
 
   // Edit form state
@@ -62,7 +63,6 @@ export function TransactionDetailDrawer({ transaction, isLoading, onClose, onDel
   async function handleSave() {
     if (!transaction) return;
     setSaving(true);
-    setActionError('');
     try {
       const updated = await transactionsService.update(transaction.id, {
         type: editType,
@@ -77,7 +77,7 @@ export function TransactionDetailDrawer({ transaction, isLoading, onClose, onDel
       onUpdated?.(updated);
       setEditing(false);
     } catch (err: any) {
-      setActionError(err.message ?? 'Error al guardar el movimiento.');
+      toast.error(err.message ?? 'Error al guardar el movimiento.');
     } finally {
       setSaving(false);
     }
@@ -86,14 +86,13 @@ export function TransactionDetailDrawer({ transaction, isLoading, onClose, onDel
   async function handleDelete() {
     if (!transaction) return;
     setDeleting(true);
-    setActionError('');
     try {
       await transactionsService.delete(transaction.id);
       setShowConfirm(false);
       onDeleted?.(transaction.id);
       onClose();
     } catch (err: any) {
-      setActionError(err.message ?? 'Error al eliminar el movimiento.');
+      toast.error(err.message ?? 'Error al eliminar el movimiento.');
       setShowConfirm(false);
     } finally {
       setDeleting(false);
@@ -342,9 +341,6 @@ export function TransactionDetailDrawer({ transaction, isLoading, onClose, onDel
                           Eliminar
                         </button>
                       </div>
-                    )}
-                    {actionError && (
-                      <p className="text-xs font-semibold text-brand-danger bg-brand-danger/10 px-3 py-2 rounded-xl mt-1">{actionError}</p>
                     )}
                   </div>
                 )}

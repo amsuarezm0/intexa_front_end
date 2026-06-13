@@ -1,5 +1,6 @@
 import { useEffect,useState } from 'react';
 import { SettingsProvider } from './contexts/SettingsContext';
+import { ToastProvider } from './contexts/ToastContext';
 import { DocumentSearchModal } from './components/DocumentSearchModal';
 import { MainLayout } from './layouts/MainLayout';
 import { clearToken,getStoredUser,getToken,setStoredUser } from './lib/api';
@@ -78,6 +79,7 @@ export default function App() {
   }
 
   return (
+    <ToastProvider>
     <SettingsProvider userId={user?.id ?? null}>
       {searchQuery !== null && (
         <DocumentSearchModal initialQuery={searchQuery} onClose={() => setSearchQuery(null)} />
@@ -93,5 +95,6 @@ export default function App() {
         {renderView()}
       </MainLayout>
     </SettingsProvider>
+    </ToastProvider>
   );
 }

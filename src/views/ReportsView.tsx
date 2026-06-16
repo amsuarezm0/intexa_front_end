@@ -206,11 +206,11 @@ export function ReportsView() {
             ))}
           </div>
           <div className="relative" ref={exportMenuRef}>
-            <div className="flex rounded-xl overflow-hidden shadow-lg shadow-brand-dark/20">
+            <div className="flex rounded-xl overflow-hidden shadow-lg shadow-brand-primary/20">
               <button
                 onClick={() => setShowExportMenu(v => !v)}
                 disabled={!data || isLoading || isExporting || isPdfExporting}
-                className="flex items-center gap-2 bg-brand-dark text-white px-5 py-3 font-bold hover:bg-brand-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 bg-brand-primary text-white px-5 py-3 font-bold hover:bg-brand-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isExporting || isPdfExporting
                   ? <><Download size={18} className="animate-pulse" /><span>Generando...</span></>
@@ -220,7 +220,7 @@ export function ReportsView() {
               <button
                 onClick={() => setShowExportMenu(v => !v)}
                 disabled={!data || isLoading || isExporting || isPdfExporting}
-                className="px-2.5 py-3 bg-brand-dark text-white border-l border-white/20 hover:bg-brand-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-2.5 py-3 bg-brand-primary text-white border-l border-white/20 hover:bg-brand-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M6 8L1 3h10z"/></svg>
               </button>

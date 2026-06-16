@@ -63,16 +63,8 @@ export function LoginView({ onLogin }: LoginViewProps) {
           <span className="text-xl font-bold text-brand-primary">Intexa ArCa</span>
         </div>
         <nav className="flex items-center gap-8">
-          {(() => {
-            const raw = import.meta.env.VITE_COMPANY_DOMAIN ?? '';
-            const domain = raw.startsWith('http') ? raw : `https://${raw}`;
-            return (
-              <>
-                <a href={domain} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-slate-500 hover:text-brand-primary transition-colors">Empresa</a>
-                <a href={`${domain}/servicios`} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-slate-500 hover:text-brand-primary transition-colors">Soluciones</a>
-              </>
-            );
-          })()}
+          <a href={import.meta.env.VITE_COMPANY_DOMAIN} className="text-sm font-medium text-slate-500 hover:text-brand-primary transition-colors">Empresa</a>
+          <a href={`${import.meta.env.VITE_COMPANY_DOMAIN}/servicios`} className="text-sm font-medium text-slate-500 hover:text-brand-primary transition-colors">Soluciones</a>
           <button className="text-sm font-bold text-brand-primary px-4 py-2">Ingresar</button>
         </nav>
       </header>

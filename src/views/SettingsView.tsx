@@ -1,4 +1,4 @@
-import { ChevronDown,History,ShieldCheck,UserPlus } from 'lucide-react';
+import { Check,ChevronDown,History,Palette,ShieldCheck,UserPlus } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useEffect,useState } from 'react';
 import { DeleteUserModal } from '../components/DeleteUserModal';
@@ -9,6 +9,7 @@ import { Skeleton,SkeletonCard } from '../components/Skeleton';
 import { UserCard } from '../components/UserCard';
 import { UserFormModal } from '../components/UserFormModal';
 import { useSettings } from '../contexts/SettingsContext';
+import { THEMES, useTheme } from '../contexts/ThemeContext';
 import { useToast } from '../contexts/ToastContext';
 import { getStoredUser } from '../lib/api';
 import { cn } from '../lib/utils';
@@ -19,6 +20,7 @@ export function SettingsView() {
   const isAdmin = currentUser?.role?.toUpperCase() === 'ADMINISTRADOR';
 
   const toast = useToast();
+  const { theme, setTheme } = useTheme();
   const [users, setUsers] = useState<User[]>([]);
   const [settings, setSettings] = useState<Settings>({ baseCurrency: 'COP', autoExchangeRate: true });
   const [logs, setLogs] = useState<ActivityLog[]>([]);
@@ -165,6 +167,44 @@ export function SettingsView() {
             >
               {saving ? 'Guardando...' : 'Guardar Preferencias'}
             </button>
+          </div>
+
+          <div className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[48px] border border-slate-100 card-shadow space-y-6">
+            <div className="flex items-center gap-3">
+              <Palette size={22} className="text-brand-primary" />
+              <h3 className="text-2xl font-black text-slate-900 tracking-tight">Apariencia</h3>
+            </div>
+            <div className="space-y-2">
+              {THEMES.map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => setTheme(t.id)}
+                  className={cn(
+                    "w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left",
+                    theme === t.id
+                      ? "border-brand-primary bg-brand-primary/5"
+                      : "border-transparent hover:border-slate-200 hover:bg-slate-50/50"
+                  )}
+                >
+                  <div className="flex-shrink-0 w-10 h-10 rounded-xl overflow-hidden border border-black/10 flex flex-col shadow-sm">
+                    <div style={{ backgroundColor: t.bg }} className="flex-1" />
+                    <div className="flex h-3">
+                      <div style={{ backgroundColor: t.primary }} className="flex-1" />
+                      <div style={{ backgroundColor: t.accent }} className="flex-1" />
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-black text-sm text-slate-900 tracking-tight">{t.label}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.dark ? 'Oscuro' : 'Claro'}</p>
+                  </div>
+                  {theme === t.id && (
+                    <div className="w-5 h-5 rounded-full bg-brand-primary flex items-center justify-center flex-shrink-0">
+                      <Check size={12} className="text-white" />
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="bg-brand-primary/5 border border-brand-primary/10 p-8 rounded-[40px] text-center space-y-4">

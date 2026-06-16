@@ -75,3 +75,75 @@
   from { opacity: 0; transform: translateX(1.5rem); }
   to   { opacity: 1; transform: translateX(0); }
 }
+
+/* ── Theme variable overrides ─────────────────────────────────────────────── */
+[data-theme="naranja"] {
+  --color-brand-bg:        #FFF8F4;
+  --color-brand-primary:   #D86018;
+  --color-brand-accent:    #B34F0F;
+  --color-brand-dark:      #8B3A0A;
+  --color-brand-secondary: #E8843E;
+  --color-brand-danger:    #B34F0F;
+}
+
+[data-theme="bosque"] {
+  --color-brand-bg:        #F5F9EE;
+  --color-brand-primary:   #5C7A01;
+  --color-brand-accent:    #7A9A01;
+  --color-brand-dark:      #3D5200;
+  --color-brand-secondary: #8FAD35;
+  --color-brand-success:   #5C7A01;
+}
+
+[data-theme="noche"],
+[data-theme="carbon"] {
+  color-scheme: dark;
+}
+
+[data-theme="noche"] {
+  --color-brand-bg:        #0D1117;
+  --color-brand-sidebar:   #161B22;
+  --color-brand-primary:   #D86018;
+  --color-brand-accent:    #F2A900;
+  --color-brand-dark:      #F2A900;
+  --color-brand-secondary: #768390;
+  --color-white:           #1C2128;
+  --color-slate-50:  #161B22;
+  --color-slate-100: #30363D;
+  --color-slate-200: #3D444D;
+  --color-slate-300: #444C56;
+  --color-slate-400: #636E7B;
+  --color-slate-500: #768390;
+  --color-slate-600: #909DAB;
+  --color-slate-700: #CDD9E5;
+  --color-slate-800: #E6EDF3;
+  --color-slate-900: #F0F6FC;
+}
+
+[data-theme="carbon"] {
+  --color-brand-bg:        #141414;
+  --color-brand-sidebar:   #1C1C1C;
+  --color-brand-primary:   #F2A900;
+  --color-brand-accent:    #D86018;
+  --color-brand-dark:      #D86018;
+  --color-brand-secondary: #8A8A8A;
+  --color-white:           #1E1E1E;
+  --color-slate-50:  #1E1E1E;
+  --color-slate-100: #2C2C2C;
+  --color-slate-200: #383838;
+  --color-slate-300: #484848;
+  --color-slate-400: #6B6B6B;
+  --color-slate-500: #8A8A8A;
+  --color-slate-600: #A8A8A8;
+  --color-slate-700: #C5C5C5;
+  --color-slate-800: #E0E0E0;
+  --color-slate-900: #F5F5F5;
+}
+
+[data-theme="noche"] .text-white,
+[data-theme="carbon"] .text-white { color: #ffffff; }
+
+[data-theme="noche"] .card-shadow,
+[data-theme="carbon"] .card-shadow {
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+}

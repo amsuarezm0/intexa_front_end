@@ -11,8 +11,8 @@ interface LoginViewProps {
 
 export function LoginView({ onLogin }: LoginViewProps) {
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState('michael_v613@hotmail.com');
-  const [password, setPassword] = useState('intexarca2026*');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [msLoading, setMsLoading] = useState(false);

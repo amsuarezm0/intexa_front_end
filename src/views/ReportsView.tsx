@@ -131,10 +131,12 @@ export function ReportsView() {
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const [isPdfExporting, setIsPdfExporting] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
   const [showInsight, setShowInsight] = useState(false);
   const [error, setError] = useState('');
   const [period, setPeriod] = useState<ReportPeriod>('mensual');
   const chartCardRef = useRef<HTMLDivElement>(null);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setIsLoading(true);
@@ -146,6 +148,16 @@ export function ReportsView() {
   }, [period]);
 
   const { formatCurrency, formatCompact } = useSettings();
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setShowExportMenu(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   async function handleDownloadPDF() {
     if (!chartCardRef.current || isPdfExporting) return;
@@ -193,25 +205,60 @@ export function ReportsView() {
               </button>
             ))}
           </div>
-          <button
-            onClick={async () => {
-              if (!data || isExporting) return;
-              setIsExporting(true);
-              try { await downloadXLSX(data, period, formatCurrency); }
-              finally { setIsExporting(false); }
-            }}
-            disabled={!data || isLoading || isExporting || isPdfExporting}
-            className="flex items-center gap-2 bg-brand-dark text-white px-6 py-3 rounded-xl font-bold hover:bg-brand-accent transition-all shadow-lg shadow-brand-dark/20 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Download size={20} /><span>{isExporting ? 'Generando...' : 'Excel'}</span>
-          </button>
-          <button
-            onClick={handleDownloadPDF}
-            disabled={!data || isLoading || isPdfExporting || isExporting}
-            className="flex items-center gap-2 bg-brand-primary text-white px-6 py-3 rounded-xl font-bold hover:bg-brand-accent transition-all shadow-lg shadow-brand-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <FileText size={20} /><span>{isPdfExporting ? 'Generando PDF...' : 'PDF'}</span>
-          </button>
+          <div className="relative" ref={exportMenuRef}>
+            <div className="flex rounded-xl overflow-hidden shadow-lg shadow-brand-dark/20">
+              <button
+                onClick={() => setShowExportMenu(v => !v)}
+                disabled={!data || isLoading || isExporting || isPdfExporting}
+                className="flex items-center gap-2 bg-brand-dark text-white px-5 py-3 font-bold hover:bg-brand-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isExporting || isPdfExporting
+                  ? <><Download size={18} className="animate-pulse" /><span>Generando...</span></>
+                  : <><Download size={18} /><span>Exportar</span></>
+                }
+              </button>
+              <button
+                onClick={() => setShowExportMenu(v => !v)}
+                disabled={!data || isLoading || isExporting || isPdfExporting}
+                className="px-2.5 py-3 bg-brand-dark text-white border-l border-white/20 hover:bg-brand-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M6 8L1 3h10z"/></svg>
+              </button>
+            </div>
+
+            {showExportMenu && (
+              <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden">
+                <div className="p-1">
+                  <button
+                    onClick={async () => {
+                      setShowExportMenu(false);
+                      if (isExporting) return;
+                      setIsExporting(true);
+                      try { await downloadXLSX(data, period, formatCurrency); }
+                      finally { setIsExporting(false); }
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm hover:bg-slate-50 rounded-xl transition-colors"
+                  >
+                    <Download size={16} className="text-brand-dark shrink-0" />
+                    <div className="text-left">
+                      <p className="font-bold text-slate-900">Excel</p>
+                      <p className="text-xs text-slate-400">.xlsx — datos tabulares</p>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => { setShowExportMenu(false); handleDownloadPDF(); }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm hover:bg-slate-50 rounded-xl transition-colors"
+                  >
+                    <FileText size={16} className="text-brand-primary shrink-0" />
+                    <div className="text-left">
+                      <p className="font-bold text-slate-900">PDF</p>
+                      <p className="text-xs text-slate-400">.pdf — con gráfica y marca</p>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

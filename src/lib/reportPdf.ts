@@ -2,16 +2,18 @@ import type { ReportPeriod, ReportSummary } from '../services';
 
 // ── Brand palette (RGB tuples for jsPDF) ─────────────────────────────────────
 const B = {
-  primary:   [122, 154,   1] as [number, number, number],
-  accent:    [216,  96,  24] as [number, number, number],
-  warning:   [242, 169,   0] as [number, number, number],
-  dark:      [ 83,  86,  90] as [number, number, number],
-  secondary: [136, 137, 141] as [number, number, number],
-  bg:        [247, 247, 247] as [number, number, number],
-  slate100:  [237, 237, 238] as [number, number, number],
+  primary:   [122, 154,   1] as [number, number, number], // #7A9A01 PANTONE 377 C
+  accent:    [216,  96,  24] as [number, number, number], // #D86018 PANTONE 1595 C
+  warning:   [242, 169,   0] as [number, number, number], // #F2A900 PANTONE 130 C
+  dark:      [ 83,  86,  90] as [number, number, number], // #53565A Cool Gray 11 C
+  secondary: [136, 137, 141] as [number, number, number], // #88898D Cool Gray 8 C  (slate-400)
+  bg:        [247, 247, 247] as [number, number, number], // #F7F7F7 slate-50
+  slate100:  [237, 237, 238] as [number, number, number], // #EDEDEE slate-100
+  slate200:  [219, 220, 222] as [number, number, number], // #DBDCDE slate-200
+  slate300:  [184, 184, 187] as [number, number, number], // #B8B8BB slate-300
   white:     [255, 255, 255] as [number, number, number],
-  success:   [122, 154,   1] as [number, number, number],
-  danger:    [216,  96,  24] as [number, number, number],
+  success:   [122, 154,   1] as [number, number, number], // alias → primary
+  danger:    [216,  96,  24] as [number, number, number], // alias → accent
 };
 
 export const PDF_BAR_COLORS: [number, number, number][] = [
@@ -76,11 +78,14 @@ function pageHeader(doc: any, subtitle: string, W: number, MARGIN: number) {
   doc.setFillColor(...B.dark);
   doc.rect(0, 0, W, 22, 'F');
 
-  // Logo dot
+  // TODO: replace the placeholder circle with the real logo when available.
+  // Use: doc.addImage(base64OrUrl, 'PNG', MARGIN, 5, 12, 12)
+  // where the last two args are width and height in mm (adjust to match logo proportions).
+  // Then shift the brand-name text x from MARGIN + 12 to MARGIN + 16 (or logo width + gap).
   doc.setFillColor(...B.primary);
   doc.circle(MARGIN + 4, 11, 3.5, 'F');
 
-  // Brand name
+  // Brand name — adjust x offset once the real logo replaces the circle above
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
   doc.setTextColor(...B.white);
@@ -89,7 +94,7 @@ function pageHeader(doc: any, subtitle: string, W: number, MARGIN: number) {
   // Subtitle
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
-  doc.setTextColor(190, 190, 190);
+  doc.setTextColor(...B.slate300);
   doc.text(subtitle, MARGIN + 12, 17.5);
 
   // Date — top right
@@ -97,7 +102,7 @@ function pageHeader(doc: any, subtitle: string, W: number, MARGIN: number) {
     day: '2-digit', month: 'long', year: 'numeric',
   });
   doc.setFontSize(7);
-  doc.setTextColor(160, 160, 160);
+  doc.setTextColor(...B.secondary);
   doc.text(today, W - MARGIN, 17.5, { align: 'right' });
 }
 
@@ -160,39 +165,42 @@ export async function downloadReportPDF(
     logging: false,
   });
   const chartImg = chartCanvas.toDataURL('image/png');
-  const chartAspect = chartCanvas.height / chartCanvas.width;
-  const chartImgH = Math.min(CW * chartAspect, 68);
-  doc.addImage(chartImg, 'PNG', MARGIN, y, CW, chartImgH);
+  const nativeAspect = chartCanvas.height / chartCanvas.width; // h/w
+  const maxH = Math.min(H - y - 30, 95);                       // available space, hard cap at 95mm
+  const naturalH = CW * nativeAspect;
+  const chartImgH = Math.min(naturalH, maxH);
+  const chartImgW = chartImgH / nativeAspect;                   // back-compute width to preserve ratio
+  const chartX = MARGIN + (CW - chartImgW) / 2;                // center if narrower than content
+  doc.addImage(chartImg, 'PNG', chartX, y, chartImgW, chartImgH);
   y += chartImgH + 10;
 
-  // Category breakdown — drawn as PDF primitives (crisp at any zoom)
-  y = sectionTitle(doc, 'Gastos por Categoría', BREAKDOWN_SUBTITLE[period], MARGIN, y);
+  // Category breakdown — only when data is present
+  if ((data.categoryBreakdown ?? []).length > 0) {
+    y = sectionTitle(doc, 'Gastos por Categoría', BREAKDOWN_SUBTITLE[period], MARGIN, y);
 
-  const BAR_H = 3.5;
-  const ROW_GAP = 8;
+    const BAR_H = 3.5;
+    const ROW_GAP = 8;
 
-  (data.categoryBreakdown ?? []).forEach((cat, i) => {
-    if (y > H - 30) return;
-    const color = PDF_BAR_COLORS[i % PDF_BAR_COLORS.length];
+    data.categoryBreakdown.forEach((cat, i) => {
+      if (y > H - 30) return;
+      const color = PDF_BAR_COLORS[i % PDF_BAR_COLORS.length];
 
-    // Label row
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7);
-    doc.setTextColor(...B.dark);
-    doc.text(cat.name, MARGIN, y);
-    doc.text(`${cat.value}%`, W - MARGIN, y, { align: 'right' });
-    y += 3.5;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.setTextColor(...B.dark);
+      doc.text(cat.name, MARGIN, y);
+      doc.text(`${cat.value}%`, W - MARGIN, y, { align: 'right' });
+      y += 3.5;
 
-    // Track
-    doc.setFillColor(...B.slate100);
-    doc.roundedRect(MARGIN, y, CW, BAR_H, 1.5, 1.5, 'F');
-    // Fill
-    const fillW = Math.max(CW * (cat.value / 100), 3);
-    doc.setFillColor(...color);
-    doc.roundedRect(MARGIN, y, fillW, BAR_H, 1.5, 1.5, 'F');
+      doc.setFillColor(...B.slate100);
+      doc.roundedRect(MARGIN, y, CW, BAR_H, 1.5, 1.5, 'F');
+      const fillW = Math.max(CW * (cat.value / 100), 3);
+      doc.setFillColor(...color);
+      doc.roundedRect(MARGIN, y, fillW, BAR_H, 1.5, 1.5, 'F');
 
-    y += BAR_H + ROW_GAP;
-  });
+      y += BAR_H + ROW_GAP;
+    });
+  }
 
   // ── Page 2: Tables + projection ──────────────────────────────────────────
   doc.addPage();

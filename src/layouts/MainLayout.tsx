@@ -40,6 +40,7 @@ export function MainLayout({ children, currentView, onNavigate, onLogout, onSync
   const getToday = () => new Date().toISOString().split('T')[0];
   const [bootstrapDate, setBootstrapDate] = useState(getToday);
   const [showBootstrapInput, setShowBootstrapInput] = useState(false);
+  const [hasData, setHasData] = useState(() => localStorage.getItem('arca_has_synced_data') === 'true');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<NotificationSummary | null>(null);
@@ -73,6 +74,8 @@ export function MainLayout({ children, currentView, onNavigate, onLogout, onSync
     try {
       const result = await siigoService.sync({ mode, dateStart });
       onSyncSuccess?.();
+      localStorage.setItem('arca_has_synced_data', 'true');
+      setHasData(true);
       if ((result.errors?.length ?? 0) > 0) {
         setSyncState('partial');
         setSyncResult(result);
@@ -193,62 +196,112 @@ export function MainLayout({ children, currentView, onNavigate, onLogout, onSync
           <div className="flex items-center gap-2 sm:gap-4 ml-auto">
             {/* Sync button — admin + tesorería */}
             {canWrite(user?.role) && <div className="relative" ref={syncMenuRef}>
-              <div className={cn(
-                "flex rounded-xl overflow-hidden text-sm font-semibold transition-all",
-                syncState === 'idle' && "bg-brand-primary/10 text-brand-primary",
-                syncState === 'loading' && "bg-brand-primary/10 text-brand-primary opacity-70",
-                syncState === 'success' && "bg-brand-success/10 text-brand-success",
-                syncState === 'partial' && "bg-brand-warning/10 text-brand-warning",
-                syncState === 'error' && "bg-brand-danger/10 text-brand-danger",
-              )}>
-                <button
-                  onClick={() => syncState === 'partial' && syncResult ? setSyncResult(syncResult) : handleSyncSiigo('incremental')}
-                  disabled={syncState === 'loading'}
-                  title="Sincronizar Siigo (últimos 90 días)"
-                  className="flex items-center gap-2 px-3 sm:px-4 py-2 hover:brightness-90 transition-all disabled:cursor-not-allowed"
-                >
-                  {syncState === 'success' && <CheckCircle2 size={16} />}
-                  {syncState === 'partial' && <AlertTriangle size={16} />}
-                  {(syncState === 'idle' || syncState === 'loading' || syncState === 'error') && (
-                    <RefreshCw size={16} className={cn(syncState === 'loading' && "animate-spin")} />
-                  )}
-                  <span className="hidden sm:inline">
-                    {syncState === 'loading' ? 'Sincronizando...'
-                      : syncState === 'success' ? 'Sincronizado'
-                      : syncState === 'partial' ? 'Parcial'
-                      : syncState === 'error' ? 'Error'
-                      : 'Sincronizar'}
-                  </span>
-                </button>
-                <button
-                  onClick={() => setShowSyncMenu(v => !v)}
-                  disabled={syncState === 'loading'}
-                  className="px-2 py-2 border-l border-current/20 hover:brightness-90 transition-all disabled:cursor-not-allowed"
-                  title="Más opciones de sincronización"
-                >
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M6 8L1 3h10z"/></svg>
-                </button>
-              </div>
+              {hasData ? (
+                /* ── Has data: incremental as primary, dropdown for other modes ── */
+                <>
+                  <div className={cn(
+                    "flex rounded-xl overflow-hidden text-sm font-semibold transition-all",
+                    syncState === 'idle' && "bg-brand-primary/10 text-brand-primary",
+                    syncState === 'loading' && "bg-brand-primary/10 text-brand-primary opacity-70",
+                    syncState === 'success' && "bg-brand-success/10 text-brand-success",
+                    syncState === 'partial' && "bg-brand-warning/10 text-brand-warning",
+                    syncState === 'error' && "bg-brand-danger/10 text-brand-danger",
+                  )}>
+                    <button
+                      onClick={() => syncState === 'partial' && syncResult ? setSyncResult(syncResult) : handleSyncSiigo('incremental')}
+                      disabled={syncState === 'loading'}
+                      title="Sincronización incremental (últimos registros nuevos)"
+                      className="flex items-center gap-2 px-3 sm:px-4 py-2 hover:brightness-90 transition-all disabled:cursor-not-allowed"
+                    >
+                      {syncState === 'success' && <CheckCircle2 size={16} />}
+                      {syncState === 'partial' && <AlertTriangle size={16} />}
+                      {(syncState === 'idle' || syncState === 'loading' || syncState === 'error') && (
+                        <RefreshCw size={16} className={cn(syncState === 'loading' && "animate-spin")} />
+                      )}
+                      <span className="hidden sm:inline">
+                        {syncState === 'loading' ? 'Sincronizando...'
+                          : syncState === 'success' ? 'Sincronizado'
+                          : syncState === 'partial' ? 'Parcial'
+                          : syncState === 'error' ? 'Error'
+                          : 'Sincronizar'}
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => setShowSyncMenu(v => !v)}
+                      disabled={syncState === 'loading'}
+                      className="px-2 py-2 border-l border-current/20 hover:brightness-90 transition-all disabled:cursor-not-allowed"
+                      title="Más opciones de sincronización"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M6 8L1 3h10z"/></svg>
+                    </button>
+                  </div>
 
-              {showSyncMenu && (
-                <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 z-[200] overflow-hidden">
-                  <div className="p-1">
-                    <button
-                      onClick={() => handleSyncSiigo('reconcile')}
-                      className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 rounded-xl transition-colors"
-                    >
-                      <p className="font-bold text-slate-900">Reconciliar</p>
-                      <p className="text-xs text-slate-400 mt-0.5">Desde el registro más antiguo · mensual</p>
-                    </button>
-                    <button
-                      onClick={() => { setBootstrapDate(getToday()); setShowBootstrapInput(v => !v); }}
-                      className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 rounded-xl transition-colors"
-                    >
-                      <p className="font-bold text-slate-900">Desde un periodo específico</p>
-                      <p className="text-xs text-slate-400 mt-0.5">Importar historial completo desde fecha</p>
-                    </button>
-                    {showBootstrapInput && (
-                      <div className="px-4 pb-3 space-y-2">
+                  {showSyncMenu && (
+                    <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 z-[200] overflow-hidden">
+                      <div className="p-1">
+                        <button
+                          onClick={() => handleSyncSiigo('reconcile')}
+                          className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 rounded-xl transition-colors"
+                        >
+                          <p className="font-bold text-slate-900">Reconciliar</p>
+                          <p className="text-xs text-slate-400 mt-0.5">Desde el registro más antiguo · mensual</p>
+                        </button>
+                        <button
+                          onClick={() => { setBootstrapDate(getToday()); setShowBootstrapInput(v => !v); }}
+                          className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 rounded-xl transition-colors"
+                        >
+                          <p className="font-bold text-slate-900">Desde un periodo específico</p>
+                          <p className="text-xs text-slate-400 mt-0.5">Importar historial completo desde fecha</p>
+                        </button>
+                        {showBootstrapInput && (
+                          <div className="px-4 pb-3 space-y-2">
+                            <input
+                              type="date"
+                              value={bootstrapDate}
+                              max={getToday()}
+                              onChange={e => setBootstrapDate(e.target.value)}
+                              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+                            />
+                            <button
+                              onClick={() => bootstrapDate && handleSyncSiigo('bootstrap', bootstrapDate)}
+                              disabled={!bootstrapDate}
+                              className="w-full bg-brand-primary text-white py-2 rounded-xl text-sm font-bold disabled:opacity-40 hover:bg-brand-accent transition-colors"
+                            >
+                              Importar {bootstrapDate} → hoy
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                /* ── No data yet: bootstrap date picker as the only option ── */
+                <>
+                  <button
+                    onClick={() => setShowSyncMenu(v => !v)}
+                    disabled={syncState === 'loading'}
+                    className={cn(
+                      "flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-sm font-semibold transition-all disabled:cursor-not-allowed",
+                      syncState === 'loading' ? "bg-brand-primary/10 text-brand-primary opacity-70"
+                        : syncState === 'error' ? "bg-brand-danger/10 text-brand-danger"
+                        : "bg-brand-primary/10 text-brand-primary hover:brightness-90"
+                    )}
+                    title="Importar datos históricos desde Siigo"
+                  >
+                    <RefreshCw size={16} className={cn(syncState === 'loading' && "animate-spin")} />
+                    <span className="hidden sm:inline">
+                      {syncState === 'loading' ? 'Importando...' : syncState === 'error' ? 'Error' : 'Importar datos'}
+                    </span>
+                  </button>
+
+                  {showSyncMenu && (
+                    <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-100 z-[200] overflow-hidden">
+                      <div className="p-4 border-b border-slate-100">
+                        <p className="text-xs font-black text-slate-900 uppercase tracking-wider">Primera sincronización</p>
+                        <p className="text-xs text-slate-400 mt-0.5">Selecciona desde qué fecha importar el historial</p>
+                      </div>
+                      <div className="p-3 space-y-2">
                         <input
                           type="date"
                           value={bootstrapDate}
@@ -258,15 +311,15 @@ export function MainLayout({ children, currentView, onNavigate, onLogout, onSync
                         />
                         <button
                           onClick={() => bootstrapDate && handleSyncSiigo('bootstrap', bootstrapDate)}
-                          disabled={!bootstrapDate}
-                          className="w-full bg-brand-primary text-white py-2 rounded-xl text-sm font-bold disabled:opacity-40 hover:bg-brand-accent transition-colors"
+                          disabled={!bootstrapDate || syncState === 'loading'}
+                          className="w-full bg-brand-primary text-white py-2.5 rounded-xl text-sm font-bold disabled:opacity-40 hover:bg-brand-accent transition-colors"
                         >
-                          Importar {bootstrapDate} → hoy
+                          Importar desde {bootstrapDate}
                         </button>
                       </div>
-                    )}
-                  </div>
-                </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>}
 

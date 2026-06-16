@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Lightbulb, X } from 'lucide-react';
 import type { SiigoSyncResult } from '../services/siigo';
 import { cn } from '../lib/utils';
 
@@ -20,7 +20,7 @@ export function SyncResultModal({ result, onClose }: SyncResultModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
 
         {/* Header */}
         <div className={cn('px-6 py-5 flex items-start justify-between gap-4', hasErrors ? 'bg-brand-warning/10' : 'bg-brand-success/10')}>
@@ -57,13 +57,24 @@ export function SyncResultModal({ result, onClose }: SyncResultModalProps) {
           </p>
         </div>
 
+        {/* Incremental sync tip — only when records were imported */}
+        {totalNew > 0 && result.mode !== 'incremental' && (
+          <div className="mx-6 mb-5 flex gap-3 bg-brand-primary/5 border border-brand-primary/15 rounded-2xl px-4 py-3">
+            <Lightbulb size={16} className="text-brand-primary shrink-0 mt-0.5" />
+            <p className="text-xs text-slate-600 leading-relaxed">
+              <span className="font-black text-brand-primary">Recomendación: </span>
+              usa la sincronización <span className="font-bold">incremental</span> para el día a día — importa solo los registros nuevos desde la última sincronización y es significativamente más rápida.
+            </p>
+          </div>
+        )}
+
         {/* Errors */}
         {hasErrors && (
           <div className="px-6 pb-5">
             <p className="text-xs font-black text-brand-warning uppercase tracking-wider mb-2">Páginas con errores</p>
             <ul className="space-y-1.5 max-h-40 overflow-y-auto">
               {result.errors!.map((e, i) => (
-                <li key={i} className="text-xs text-slate-600 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 leading-snug">
+                <li key={i} className="text-xs text-slate-600 bg-brand-warning/5 border border-brand-warning/20 rounded-xl px-3 py-2 leading-snug">
                   {e}
                 </li>
               ))}

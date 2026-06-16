@@ -331,7 +331,7 @@ export function ReportsView() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 24 }}
               onClick={e => e.stopPropagation()}
-              className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden"
+              className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]"
             >
               <div className="bg-brand-dark p-8 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-48 h-48 bg-white/[0.04] rounded-full -mr-16 -mt-16" />
@@ -352,7 +352,7 @@ export function ReportsView() {
                 <p className="relative z-10 mt-5 text-sm font-semibold text-white/70 leading-relaxed">{data.annual.insightText}</p>
               </div>
 
-              <div className="p-8 space-y-6">
+              <div className="p-8 space-y-6 overflow-y-auto flex-1">
                 {alerts.length > 0 ? (
                   <div className="space-y-3">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Categorías con Sobregasto</p>

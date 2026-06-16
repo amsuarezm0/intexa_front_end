@@ -1,10 +1,11 @@
 import ExcelJS from 'exceljs';
-import { AlertTriangle,ChevronRight,Download,Sparkles,TrendingDown,TrendingUp,X } from 'lucide-react';
+import { AlertTriangle,ChevronRight,Download,FileText,Sparkles,TrendingDown,TrendingUp,X } from 'lucide-react';
 import { motion } from 'motion/react';
-import { useEffect,useState } from 'react';
+import { useEffect,useRef,useState } from 'react';
 import { Bar,CartesianGrid,ComposedChart,Line,ReferenceLine,ResponsiveContainer,Tooltip,XAxis,YAxis } from 'recharts';
 import { Skeleton,SkeletonCard,SkeletonChart } from '../components/Skeleton';
 import { useSettings } from '../contexts/SettingsContext';
+import { downloadReportPDF, PDF_BAR_HEX } from '../lib/reportPdf';
 import { cn } from '../lib/utils';
 import { reportsService,type ReportPeriod,type ReportSummary } from '../services';
 
@@ -129,9 +130,11 @@ export function ReportsView() {
   const [data, setData] = useState<ReportSummary>({ cashFlowChart: [], categoryBreakdown: [], categoryTable: [], annual: { projectedClose: 0, probability: 0, insightText: '—' }, complianceRate: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
+  const [isPdfExporting, setIsPdfExporting] = useState(false);
   const [showInsight, setShowInsight] = useState(false);
   const [error, setError] = useState('');
   const [period, setPeriod] = useState<ReportPeriod>('mensual');
+  const chartCardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setIsLoading(true);
@@ -143,6 +146,16 @@ export function ReportsView() {
   }, [period]);
 
   const { formatCurrency, formatCompact } = useSettings();
+
+  async function handleDownloadPDF() {
+    if (!chartCardRef.current || isPdfExporting) return;
+    setIsPdfExporting(true);
+    try {
+      await downloadReportPDF(data, period, formatCurrency, chartCardRef.current);
+    } finally {
+      setIsPdfExporting(false);
+    }
+  }
 
   if (error) return <div className="p-8 text-brand-danger font-semibold">{error}</div>;
   if (isLoading) {
@@ -187,16 +200,23 @@ export function ReportsView() {
               try { await downloadXLSX(data, period, formatCurrency); }
               finally { setIsExporting(false); }
             }}
-            disabled={!data || isLoading || isExporting}
+            disabled={!data || isLoading || isExporting || isPdfExporting}
             className="flex items-center gap-2 bg-brand-dark text-white px-6 py-3 rounded-xl font-bold hover:bg-brand-accent transition-all shadow-lg shadow-brand-dark/20 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Download size={20} /><span>{isExporting ? 'Generando...' : 'Descargar Reporte'}</span>
+            <Download size={20} /><span>{isExporting ? 'Generando...' : 'Excel'}</span>
+          </button>
+          <button
+            onClick={handleDownloadPDF}
+            disabled={!data || isLoading || isPdfExporting || isExporting}
+            className="flex items-center gap-2 bg-brand-primary text-white px-6 py-3 rounded-xl font-bold hover:bg-brand-accent transition-all shadow-lg shadow-brand-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <FileText size={20} /><span>{isPdfExporting ? 'Generando PDF...' : 'PDF'}</span>
           </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 bg-white p-5 sm:p-10 rounded-3xl sm:rounded-[48px] border border-slate-100 card-shadow flex flex-col">
+        <div ref={chartCardRef} className="lg:col-span-2 bg-white p-5 sm:p-10 rounded-3xl sm:rounded-[48px] border border-slate-100 card-shadow flex flex-col">
           <div className="flex justify-between items-start mb-12">
             <div>
               <h3 className="text-2xl font-black text-slate-900 tracking-tight">{CHART_TITLES[period]}</h3>
@@ -232,19 +252,19 @@ export function ReportsView() {
           <h3 className="text-2xl font-black text-slate-900 tracking-tight">Gastos por Categoría</h3>
           <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-tight mb-8">{BREAKDOWN_SUBTITLE[period]}</p>
           <div className="space-y-8">
-            {data.categoryBreakdown.map((cat, i) => {
-              const colors = ['bg-brand-success', 'bg-brand-accent', 'bg-brand-warning', 'bg-brand-primary', 'bg-brand-secondary', 'bg-sky-400', 'bg-violet-400', 'bg-pink-400', 'bg-teal-400', 'bg-amber-300'];
-              return (
-                <div key={i} className="space-y-3">
-                  <div className="flex justify-between text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-                    <span>{cat.name}</span><span className="text-slate-900">{cat.value}%</span>
-                  </div>
-                  <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                    <div className={cn("h-full rounded-full transition-all duration-1000", colors[i % colors.length])} style={{ width: `${cat.value}%` }} />
-                  </div>
+            {data.categoryBreakdown.map((cat, i) => (
+              <div key={i} className="space-y-3">
+                <div className="flex justify-between text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                  <span>{cat.name}</span><span className="text-slate-900">{cat.value}%</span>
                 </div>
-              );
-            })}
+                <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-1000"
+                    style={{ width: `${cat.value}%`, backgroundColor: PDF_BAR_HEX[i % PDF_BAR_HEX.length] }}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>

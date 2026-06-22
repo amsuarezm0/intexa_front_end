@@ -36,6 +36,19 @@ export interface CurrentUser {
   role: string;
 }
 
+/** True if there is no token or the stored JWT's `exp` is in the past. */
+export function isTokenExpired(): boolean {
+  const token = getToken();
+  if (!token) return true;
+  try {
+    const { exp } = JSON.parse(atob(token.split('.')[1]));
+    if (!exp) return false; // no expiry claim: treat as non-expiring
+    return Date.now() >= exp * 1000;
+  } catch {
+    return true; // unparseable token is effectively invalid
+  }
+}
+
 /** Decodes the stored JWT payload without verifying the signature. */
 export function getCurrentUser(): CurrentUser | null {
   const token = getToken();
@@ -65,7 +78,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (res.status === 401) {
     clearToken();
-    window.location.reload();
+    // App.tsx listens for this and switches to the login view (no full reload).
+    window.dispatchEvent(new Event('auth:session-expired'));
     return new Promise(() => {});
   }
   if (!res.ok) {

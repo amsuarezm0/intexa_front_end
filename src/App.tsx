@@ -4,7 +4,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { DocumentSearchModal } from './components/DocumentSearchModal';
 import { MainLayout } from './layouts/MainLayout';
-import { clearToken,getStoredUser,getToken,setStoredUser,setToken } from './lib/api';
+import { clearToken,getStoredUser,getToken,isTokenExpired,setStoredUser,setToken } from './lib/api';
 import { authService } from './services';
 import { CashFlowView } from './views/CashFlowView';
 import { CreateMovementView } from './views/CreateMovementView';
@@ -22,7 +22,7 @@ export interface LoggedInUser { id: string; name: string; email: string; role: s
 
 export default function App() {
   const [currentView, setCurrentView] = useState<View>(() =>
-    getToken() ? 'dashboard' : 'login'
+    getToken() && !isTokenExpired() ? 'dashboard' : 'login'
   );
   const [user, setUser] = useState<LoggedInUser | null>(() => getStoredUser());
   const [refreshKey, setRefreshKey] = useState(0);
@@ -35,6 +35,26 @@ export default function App() {
   useEffect(() => {
     if (!getToken() && currentView !== 'login') setCurrentView('login');
   }, [currentView]);
+
+  // Send the user back to login when the session expires: reactively (a 401
+  // from the API fires 'auth:session-expired') and proactively (token's exp
+  // has passed on load or when the tab regains focus).
+  useEffect(() => {
+    const logoutIfExpired = () => {
+      if (getToken() && isTokenExpired()) handleLogout();
+    };
+    logoutIfExpired();
+    const onExpired = () => handleLogout();
+    window.addEventListener('auth:session-expired', onExpired);
+    window.addEventListener('focus', logoutIfExpired);
+    document.addEventListener('visibilitychange', logoutIfExpired);
+    return () => {
+      window.removeEventListener('auth:session-expired', onExpired);
+      window.removeEventListener('focus', logoutIfExpired);
+      document.removeEventListener('visibilitychange', logoutIfExpired);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Complete a Microsoft login if we just came back from the redirect.
   useEffect(() => {

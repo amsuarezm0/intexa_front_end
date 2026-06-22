@@ -18,18 +18,14 @@ export function LoginView({ onLogin }: LoginViewProps) {
   const [msLoading, setMsLoading] = useState(false);
 
   const handleMicrosoftLogin = async () => {
-    if (msLoading) return; // evita disparar un segundo popup con doble clic
+    if (msLoading) return; // evita disparar el redirect dos veces con doble clic
     setError('');
     setMsLoading(true);
     try {
-      const res = await authService.loginWithMicrosoft();
-      setToken(res.token);
-      onLogin(res.user);
+      // Redirige a Microsoft; el login se completa al volver, en App.tsx.
+      await authService.loginWithMicrosoft();
     } catch (err: any) {
-      if (err.errorCode !== 'user_cancelled') {
-        setError(err.message ?? 'Error al iniciar sesión con Microsoft');
-      }
-    } finally {
+      setError(err.message ?? 'Error al iniciar sesión con Microsoft');
       setMsLoading(false);
     }
   };

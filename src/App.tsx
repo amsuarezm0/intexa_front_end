@@ -4,7 +4,8 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { DocumentSearchModal } from './components/DocumentSearchModal';
 import { MainLayout } from './layouts/MainLayout';
-import { clearToken,getStoredUser,getToken,setStoredUser } from './lib/api';
+import { clearToken,getStoredUser,getToken,setStoredUser,setToken } from './lib/api';
+import { authService } from './services';
 import { CashFlowView } from './views/CashFlowView';
 import { CreateMovementView } from './views/CreateMovementView';
 import { CreateProjectionView } from './views/CreateProjectionView';
@@ -26,10 +27,28 @@ export default function App() {
   const [user, setUser] = useState<LoggedInUser | null>(() => getStoredUser());
   const [refreshKey, setRefreshKey] = useState(0);
   const [searchQuery, setSearchQuery] = useState<string | null>(null);
+  // True while we resolve a Microsoft redirect, so we don't flash the login view.
+  const [resolvingAuth, setResolvingAuth] = useState(
+    () => /(?:code|state|error|session_state)=/.test(window.location.hash + window.location.search)
+  );
 
   useEffect(() => {
     if (!getToken() && currentView !== 'login') setCurrentView('login');
   }, [currentView]);
+
+  // Complete a Microsoft login if we just came back from the redirect.
+  useEffect(() => {
+    authService.completeMicrosoftLogin()
+      .then(res => {
+        if (res) {
+          setToken(res.token);
+          handleLogin(res.user);
+        }
+      })
+      .catch(() => { /* on failure the login view is shown */ })
+      .finally(() => setResolvingAuth(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleLogin = (u: LoggedInUser) => {
     setStoredUser(u);
@@ -74,6 +93,14 @@ export default function App() {
         return <DashboardView onCreateMovement={() => handleNavigate('create-movement')} user={user} />;
     }
   };
+
+  if (resolvingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-brand-bg text-slate-400 font-semibold">
+        Iniciando sesión…
+      </div>
+    );
+  }
 
   if (currentView === 'login') {
     return <LoginView onLogin={handleLogin} />;

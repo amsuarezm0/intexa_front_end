@@ -1,8 +1,22 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
+/* ── Akagi — self-hosted brand typeface (full family) ─────────────────────────
+   Weights map to Tailwind's scale; values not declared resolve to the nearest
+   one (e.g. font-medium/500 → 400, font-bold/700 & font-black/900 → 800).
+   UltraLight=200 · Thin=300 · Book=400 · SemiBold=600 · ExtraBold=800        */
+@font-face { font-family: "Akagi"; src: url("/fonts/Akagi-UL.woff2") format("woff2"); font-weight: 200; font-style: normal; font-display: swap; }
+@font-face { font-family: "Akagi"; src: url("/fonts/Akagi-UTIT.woff2") format("woff2"); font-weight: 200; font-style: italic; font-display: swap; }
+@font-face { font-family: "Akagi"; src: url("/fonts/Akagi-TH.woff2") format("woff2"); font-weight: 300; font-style: normal; font-display: swap; }
+@font-face { font-family: "Akagi"; src: url("/fonts/Akagi-THIT.woff2") format("woff2"); font-weight: 300; font-style: italic; font-display: swap; }
+@font-face { font-family: "Akagi"; src: url("/fonts/Akagi-BK.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Akagi"; src: url("/fonts/Akagi-BKIT.woff2") format("woff2"); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: "Akagi"; src: url("/fonts/Akagi-SB.woff2") format("woff2"); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: "Akagi"; src: url("/fonts/Akagi-SBIT.woff2") format("woff2"); font-weight: 600; font-style: italic; font-display: swap; }
+@font-face { font-family: "Akagi"; src: url("/fonts/Akagi-EB.woff2") format("woff2"); font-weight: 800; font-style: normal; font-display: swap; }
+@font-face { font-family: "Akagi"; src: url("/fonts/Akagi-EBIT.woff2") format("woff2"); font-weight: 800; font-style: italic; font-display: swap; }
+
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Akagi", sans-serif;
 
   /* ── Pantone brand palette ───────────────────────────────────────────────── */
   --color-brand-sidebar:   #FFFFFF;

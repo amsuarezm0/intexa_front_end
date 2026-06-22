@@ -1,6 +1,5 @@
 import { useEffect,useState } from 'react';
 import { SettingsProvider } from './contexts/SettingsContext';
-import { ThemeProvider } from './contexts/ThemeContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { DocumentSearchModal } from './components/DocumentSearchModal';
 import { MainLayout } from './layouts/MainLayout';
@@ -127,7 +126,6 @@ export default function App() {
   }
 
   return (
-    <ThemeProvider>
     <ToastProvider>
     <SettingsProvider userId={user?.id ?? null}>
       {searchQuery !== null && (
@@ -145,6 +143,5 @@ export default function App() {
       </MainLayout>
     </SettingsProvider>
     </ToastProvider>
-    </ThemeProvider>
   );
 }

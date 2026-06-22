@@ -1,7 +1,8 @@
-import { Eye,EyeOff,LayoutDashboard } from 'lucide-react';
+import { Eye,EyeOff } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useState } from 'react';
 import type { LoggedInUser } from '../App';
+import { BrandLogo } from '../components/BrandLogo';
 import { setToken } from '../lib/api';
 import { authService } from '../services';
 
@@ -54,10 +55,7 @@ export function LoginView({ onLogin }: LoginViewProps) {
 
       <header className="p-8 flex items-center justify-between relative z-10">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-brand-primary rounded-lg flex items-center justify-center">
-             <LayoutDashboard className="text-white" size={20} />
-          </div>
-          <span className="text-xl font-bold text-brand-primary">Intexa ArCa</span>
+          <BrandLogo className="h-9" />
         </div>
         <nav className="flex items-center gap-8">
           <a href={import.meta.env.VITE_COMPANY_DOMAIN} className="text-sm font-medium text-slate-500 hover:text-brand-primary transition-colors">Empresa</a>

@@ -9,14 +9,16 @@ export interface ThemeMeta {
   accent: string;
   bg: string;
   dark: boolean;
+  /** Brand logo (under /public/logos) chosen to match the theme's palette. */
+  logo: string;
 }
 
 export const THEMES: ThemeMeta[] = [
-  { id: 'predeterminado', label: 'Predeterminado', primary: '#53565A', accent: '#D86018', bg: '#F7F7F7', dark: false },
-  { id: 'naranja',        label: 'Naranja',        primary: '#D86018', accent: '#B34F0F', bg: '#FFF8F4', dark: false },
-  { id: 'bosque',         label: 'Bosque',         primary: '#5C7A01', accent: '#7A9A01', bg: '#F5F9EE', dark: false },
-  { id: 'noche',          label: 'Noche',          primary: '#D86018', accent: '#F2A900', bg: '#0D1117', dark: true  },
-  { id: 'carbon',         label: 'Carbón',         primary: '#F2A900', accent: '#D86018', bg: '#141414', dark: true  },
+  { id: 'predeterminado', label: 'Predeterminado', primary: '#53565A', accent: '#D86018', bg: '#F7F7F7', dark: false, logo: '/logos/intexa-color-gris.png'   },
+  { id: 'naranja',        label: 'Naranja',        primary: '#D86018', accent: '#B34F0F', bg: '#FFF8F4', dark: false, logo: '/logos/intexa-naranja.png'      },
+  { id: 'bosque',         label: 'Bosque',         primary: '#5C7A01', accent: '#7A9A01', bg: '#F5F9EE', dark: false, logo: '/logos/intexa-verde.png'        },
+  { id: 'noche',          label: 'Noche',          primary: '#D86018', accent: '#F2A900', bg: '#0D1117', dark: true,  logo: '/logos/intexa-color-blanco.png' },
+  { id: 'carbon',         label: 'Carbón',         primary: '#F2A900', accent: '#D86018', bg: '#141414', dark: true,  logo: '/logos/intexa-amarillo.png'     },
 ];
 
 interface ThemeContextValue {

@@ -1,6 +1,6 @@
 import { Check,ChevronDown,History,Palette,ShieldCheck,UserPlus } from 'lucide-react';
 import { motion } from 'motion/react';
-import { useEffect,useState } from 'react';
+import { useEffect,useRef,useState } from 'react';
 import { DeleteUserModal } from '../components/DeleteUserModal';
 import { LogDetailModal } from '../components/LogDetailModal';
 import { LogRow } from '../components/LogRow';
@@ -9,7 +9,7 @@ import { Skeleton,SkeletonCard } from '../components/Skeleton';
 import { UserCard } from '../components/UserCard';
 import { UserFormModal } from '../components/UserFormModal';
 import { useSettings } from '../contexts/SettingsContext';
-import { THEMES, useTheme } from '../contexts/ThemeContext';
+import { THEMES, useTheme, type ThemeId } from '../contexts/ThemeContext';
 import { useToast } from '../contexts/ToastContext';
 import { getStoredUser } from '../lib/api';
 import { cn } from '../lib/utils';
@@ -22,7 +22,10 @@ export function SettingsView() {
   const toast = useToast();
   const { theme, setTheme } = useTheme();
   const [users, setUsers] = useState<User[]>([]);
-  const [settings, setSettings] = useState<Settings>({ baseCurrency: 'COP', autoExchangeRate: true });
+  const [settings, setSettings] = useState<Settings>({ baseCurrency: 'COP', autoExchangeRate: true, theme: 'predeterminado' });
+  // Last settings persisted to the server. Theme changes merge onto this so they
+  // never prematurely save the staged (unsaved) currency edits in `settings`.
+  const savedRef = useRef<Settings>(settings);
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -43,6 +46,7 @@ export function SettingsView() {
     ]).then(([u, s, l]) => {
       setUsers(u);
       setSettings(s);
+      savedRef.current = s;
       setLogs(l);
     })
     .catch((err: any) => setError(err.message ?? 'No se pudo cargar la configuración.'))
@@ -52,13 +56,29 @@ export function SettingsView() {
   const handleSaveSettings = async () => {
     setSaving(true);
     try {
-      const updated = await settingsService.update(settings);
+      const updated = await settingsService.update({ ...settings, theme });
       setSettings(updated);
+      savedRef.current = updated;
       refreshSettings();
     } catch (err: any) {
       toast.error(err.message ?? 'Error al guardar la configuración.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Theme changes apply instantly and persist on their own (merged onto the last
+  // saved settings so staged currency edits are left untouched).
+  const handleSelectTheme = async (id: ThemeId) => {
+    const previous = theme;
+    setTheme(id);
+    try {
+      const updated = await settingsService.update({ ...savedRef.current, theme: id });
+      savedRef.current = updated;
+      setSettings(s => ({ ...s, theme: id }));
+    } catch (err: any) {
+      setTheme(previous); // revert UI if the server rejected it
+      toast.error(err.message ?? 'No se pudo guardar el tema.');
     }
   };
 
@@ -178,7 +198,7 @@ export function SettingsView() {
               {THEMES.map(t => (
                 <button
                   key={t.id}
-                  onClick={() => setTheme(t.id)}
+                  onClick={() => handleSelectTheme(t.id)}
                   className={cn(
                     "w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left",
                     theme === t.id

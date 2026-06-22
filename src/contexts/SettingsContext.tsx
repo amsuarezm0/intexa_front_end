@@ -1,5 +1,6 @@
 import { createContext,useCallback,useContext,useEffect,useState,type ReactNode } from 'react';
 import { settingsService,type Settings } from '../services';
+import { THEMES,useTheme,type ThemeId } from './ThemeContext';
 
 // ── Locale map ────────────────────────────────────────────────────────────────
 
@@ -57,11 +58,18 @@ interface SettingsProviderProps {
 export function SettingsProvider({ children, userId }: SettingsProviderProps) {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [rates, setRates] = useState<Record<string, number> | null>(null);
+  const { setTheme } = useTheme();
 
   const load = useCallback(() => {
-    settingsService.get().then(setSettings).catch(() => {});
+    settingsService.get().then(s => {
+      setSettings(s);
+      // DB is the source of truth for the theme across devices — apply it on load.
+      if (s.theme && THEMES.some(t => t.id === s.theme)) {
+        setTheme(s.theme as ThemeId);
+      }
+    }).catch(() => {});
     settingsService.getExchangeRates().then(setRates).catch(() => {});
-  }, []);
+  }, [setTheme]);
 
   useEffect(() => {
     if (userId) {

@@ -3,6 +3,8 @@ import { api } from '../lib/api';
 export interface Settings {
   baseCurrency: string;
   autoExchangeRate: boolean;
+  /** Active UI theme id (see ThemeContext THEMES). Persisted per user. */
+  theme: string;
 }
 
 export interface ActivityLog {

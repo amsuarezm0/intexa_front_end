@@ -16,6 +16,7 @@ X,
 } from 'lucide-react';
 import { useEffect,useRef,useState,type ReactNode } from 'react';
 import type { LoggedInUser } from '../App';
+import { BrandLogo } from '../components/BrandLogo';
 import { SyncResultModal } from '../components/SyncResultModal';
 import { useSettings } from '../contexts/SettingsContext';
 import { canWrite } from '../lib/roles';
@@ -120,9 +121,7 @@ export function MainLayout({ children, currentView, onNavigate, onLogout, onSync
         mobileNavOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
       )}>
         <div className="p-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-brand-primary">Intexa ArCa</h1>
-          </div>
+          <BrandLogo className="h-8" />
           <button
             className="md:hidden p-1 text-slate-400 hover:text-slate-600"
             onClick={() => setMobileNavOpen(false)}

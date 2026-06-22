@@ -1,0 +1,15 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Sign-in redirect</title>
+    <meta charset="utf-8" />
+  </head>
+  <body>
+    <!--
+      Dedicated MSAL popup redirect target.
+      Intentionally empty: the opener window reads the auth response from this
+      page's URL and closes the popup. Do NOT load the SPA bundle here, or
+      loginPopup will throw block_nested_popups.
+    -->
+  </body>
+</html>

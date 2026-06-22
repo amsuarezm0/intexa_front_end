@@ -18,6 +18,7 @@ export function LoginView({ onLogin }: LoginViewProps) {
   const [msLoading, setMsLoading] = useState(false);
 
   const handleMicrosoftLogin = async () => {
+    if (msLoading) return; // evita disparar un segundo popup con doble clic
     setError('');
     setMsLoading(true);
     try {
@@ -117,9 +118,8 @@ export function LoginView({ onLogin }: LoginViewProps) {
             </div>
 
             <div className="space-y-2">
-              <div className="flex justify-between items-center px-1">
+              <div className="px-1">
                 <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">CONTRASEÑA</label>
-                <a href="#" className="text-[11px] font-bold text-brand-primary tracking-tight">¿Olvidaste tu contraseña?</a>
               </div>
               <div className="relative">
                 <input

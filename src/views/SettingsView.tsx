@@ -67,8 +67,9 @@ export function SettingsView() {
     }
   };
 
-  // Theme changes apply instantly and persist on their own (merged onto the last
-  // saved settings so staged currency edits are left untouched).
+  // Theme changes apply instantly and persist (merged onto the last saved
+  // settings so staged currency edits are left untouched). Settings updates
+  // are not recorded in the activity log.
   const handleSelectTheme = async (id: ThemeId) => {
     const previous = theme;
     setTheme(id);

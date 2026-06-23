@@ -7,7 +7,9 @@ import { usersService, type User } from '../services';
 const ROLES = ['ADMINISTRADOR', 'TESORERÍA', 'CONSULTA'];
 
 const inputCls =
-  'w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:bg-white focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none font-semibold';
+  'w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:bg-white focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none font-semibold disabled:opacity-60 disabled:cursor-not-allowed';
+
+const MIN_PASSWORD = 8;
 const btnSecondary =
   'flex-1 py-4 rounded-2xl font-bold border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all';
 const btnPrimary =
@@ -22,6 +24,8 @@ interface CreateProps {
 interface EditProps {
   mode: 'edit';
   user: User;
+  /** True when editing your own account — only the password is editable. */
+  isSelf?: boolean;
   onSuccess: (user: User) => void;
   onClose: () => void;
 }
@@ -30,6 +34,7 @@ type Props = CreateProps | EditProps;
 
 export function UserFormModal(props: Props) {
   const isEdit = props.mode === 'edit';
+  const isSelf = props.mode === 'edit' && props.isSelf === true;
   const initial = isEdit
     ? { name: props.user.name, email: '', password: '', role: props.user.role }
     : { name: '', email: '', password: '', role: 'CONSULTA' };
@@ -48,10 +53,17 @@ export function UserFormModal(props: Props) {
     setLoading(true);
     try {
       if (isEdit) {
-        const updated = await usersService.update(props.user.id, {
+        if (form.password && form.password.length < MIN_PASSWORD) {
+          setError(`La contraseña debe tener al menos ${MIN_PASSWORD} caracteres.`);
+          setLoading(false);
+          return;
+        }
+        const body: { name?: string; role?: string; password?: string } = {
           name: form.name,
           role: form.role,
-        });
+        };
+        if (form.password) body.password = await hashPassword(form.password);
+        const updated = await usersService.update(props.user.id, body);
         props.onSuccess({ ...props.user, ...updated });
       } else {
         const hashed = await hashPassword(form.password);
@@ -90,6 +102,9 @@ export function UserFormModal(props: Props) {
             {isEdit && (
               <p className="text-sm font-semibold text-slate-400 mt-1">{props.user.email}</p>
             )}
+            {isSelf && (
+              <p className="text-xs font-bold text-brand-primary mt-1">Solo puedes cambiar tu contraseña.</p>
+            )}
           </div>
           <button onClick={props.onClose} className="text-slate-400 hover:text-slate-700 transition-colors">
             <X size={24} />
@@ -105,7 +120,7 @@ export function UserFormModal(props: Props) {
 
           <div className="space-y-2">
             <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest pl-1">Nombre</label>
-            <input type="text" required value={form.name} onChange={set('name')} className={inputCls} />
+            <input type="text" required value={form.name} onChange={set('name')} disabled={isSelf} className={inputCls} />
           </div>
 
           {!isEdit && (
@@ -115,32 +130,39 @@ export function UserFormModal(props: Props) {
             </div>
           )}
 
-          {!isEdit && (
-            <div className="space-y-2">
-              <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest pl-1">Contraseña</label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={form.password}
-                  onChange={set('password')}
-                  className={`${inputCls} pr-14`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(v => !v)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors"
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
+          <div className="space-y-2">
+            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest pl-1">
+              {isEdit ? 'Nueva contraseña' : 'Contraseña'}
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                required={!isEdit}
+                minLength={MIN_PASSWORD}
+                autoComplete="new-password"
+                value={form.password}
+                onChange={set('password')}
+                className={`${inputCls} pr-14`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(v => !v)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
-          )}
+            {isEdit && (
+              <p className="text-[11px] font-bold text-slate-400 pl-1">
+                Mínimo {MIN_PASSWORD} caracteres. Déjala en blanco para mantener la actual.
+              </p>
+            )}
+          </div>
 
           <div className="space-y-2">
             <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest pl-1">Rol</label>
             <div className="relative">
-              <select value={form.role} onChange={set('role')} className={`${inputCls} pl-5 pr-12 appearance-none`}>
+              <select value={form.role} onChange={set('role')} disabled={isSelf} className={`${inputCls} pl-5 pr-12 appearance-none`}>
                 {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
               </select>
               <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />

@@ -132,6 +132,7 @@ export function SettingsView() {
             <UserFormModal
               mode="edit"
               user={editingUser}
+              isSelf={editingUser.id === currentUser?.id}
               onSuccess={updated => setUsers(u => u.map(x => x.id === updated.id ? updated : x))}
               onClose={() => setEditingUser(null)}
             />

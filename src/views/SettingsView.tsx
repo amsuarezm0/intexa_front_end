@@ -40,20 +40,27 @@ export function SettingsView() {
   const { locale, refreshSettings } = useSettings();
 
   useEffect(() => {
-    // User management and activity logs are admin-only on the API; non-admins
-    // only load their settings (currency/theme) to avoid a 403.
-    Promise.all([
-      settingsService.get(),
-      isAdmin ? usersService.list() : Promise.resolve<User[]>([]),
-      isAdmin ? settingsService.getActivityLogs() : Promise.resolve<ActivityLog[]>([]),
-    ]).then(([s, u, l]) => {
-      setSettings(s);
-      savedRef.current = s;
-      setUsers(u);
-      setLogs(l);
-    })
-    .catch((err: any) => setError(err.message ?? 'No se pudo cargar la configuración.'))
-    .finally(() => setIsLoading(false));
+    let active = true;
+
+    // Settings (currency/theme) are available to every role and gate the view:
+    // if this fails it's a real error worth surfacing.
+    settingsService.get()
+      .then(s => {
+        if (!active) return;
+        setSettings(s);
+        savedRef.current = s;
+      })
+      .catch((err: any) => { if (active) setError(err.message ?? 'No se pudo cargar la configuración.'); })
+      .finally(() => { if (active) setIsLoading(false); });
+
+    // User management and activity logs are ADMINISTRADOR-only on the API. Only
+    // request them for admins, and never let a 403/failure block the view.
+    if (isAdmin) {
+      usersService.list().then(u => { if (active) setUsers(u); }).catch(() => {});
+      settingsService.getActivityLogs().then(l => { if (active) setLogs(l); }).catch(() => {});
+    }
+
+    return () => { active = false; };
   }, [isAdmin]);
 
   const handleSaveSettings = async () => {

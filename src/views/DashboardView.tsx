@@ -4,7 +4,6 @@ ArrowDownCircle,
 ArrowUpCircle,
 Building2,
 Calendar,
-Check,
 ChevronRight,
 Clock,
 Landmark,
@@ -13,7 +12,6 @@ Pencil,
 Plus,
 Sparkles,
 TrendingUp,
-X,
 } from 'lucide-react';
 import { AnimatePresence,motion } from 'motion/react';
 import { useEffect,useState } from 'react';
@@ -38,7 +36,7 @@ import { PIE_COLORS } from '../lib/colors';
 import { canWrite,isTreasury } from '../lib/roles';
 import { cn } from '../lib/utils';
 import type { Transaction } from '../services';
-import { dashboardService,transactionsService,type BankBalance,type DashboardSummary } from '../services';
+import { dashboardService,transactionsService,type BankAccount,type BankBalance,type DashboardSummary } from '../services';
 
 const SALDO_UPDATED_KEY = 'arca_saldo_updated_date';
 
@@ -80,8 +78,6 @@ export function DashboardView({
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [showSaldoModal, setShowSaldoModal] = useState(false);
-  const [isEditingSaldo, setIsEditingSaldo] = useState(false);
-  const [saldoInput, setSaldoInput] = useState('');
   const [saldoSaving, setSaldoSaving] = useState(false);
   const { formatCurrency, formatCompact } = useSettings();
 
@@ -104,27 +100,29 @@ export function DashboardView({
     }
   }, [isTesorero]);
 
-  async function handleSaldoUpdate(amount: number) {
+  async function handleSaldoUpdate(accounts: BankAccount[]) {
     setSaldoSaving(true);
+    const total = accounts.reduce((sum, a) => sum + a.amount, 0);
     try {
-      const updated = await dashboardService.updateBankBalance(amount);
+      const updated = await dashboardService.updateBankBalance(accounts);
       setBankBalance(updated);
       markSaldoUpdatedToday();
     } catch {
-      setBankBalance(prev => prev
-        ? { ...prev, amount, updatedAt: new Date().toISOString() }
-        : { amount, updatedAt: new Date().toISOString(), updatedBy: user?.name ?? '' }
-      );
+      setBankBalance(prev => ({
+        accounts,
+        amount: total,
+        updatedAt: new Date().toISOString(),
+        updatedBy: prev?.updatedBy ?? user?.name ?? '',
+      }));
       markSaldoUpdatedToday();
     } finally {
       setSaldoSaving(false);
       setShowSaldoModal(false);
-      setIsEditingSaldo(false);
     }
   }
 
-  function handleModalConfirm(amount: number) {
-    handleSaldoUpdate(amount);
+  function handleModalConfirm(accounts: BankAccount[]) {
+    handleSaldoUpdate(accounts);
   }
 
   function handleModalSkip() {
@@ -137,22 +135,6 @@ export function DashboardView({
       .then(setSelectedTx)
       .catch(() => {})
       .finally(() => setIsLoadingDetail(false));
-  }
-
-  function startInlineEdit() {
-    setSaldoInput(bankBalance?.amount?.toString() ?? '');
-    setIsEditingSaldo(true);
-  }
-
-  function cancelInlineEdit() {
-    setIsEditingSaldo(false);
-    setSaldoInput('');
-  }
-
-  async function confirmInlineEdit() {
-    const parsed = parseFloat(saldoInput.replace(/,/g, '.'));
-    if (isNaN(parsed) || parsed < 0) return;
-    await handleSaldoUpdate(parsed);
   }
 
   if (error) return <div className="p-8 text-brand-danger font-semibold">{error}</div>;
@@ -197,7 +179,11 @@ export function DashboardView({
       />
       <AnimatePresence>
         {showSaldoModal && (
-          <BankSaldoModal onConfirm={handleModalConfirm} onSkip={handleModalSkip} />
+          <BankSaldoModal
+            initialAccounts={bankBalance?.accounts}
+            onConfirm={handleModalConfirm}
+            onSkip={handleModalSkip}
+          />
         )}
       </AnimatePresence>
 
@@ -241,48 +227,34 @@ export function DashboardView({
               <div className="flex justify-between items-start mb-4">
                 <div className="space-y-1 flex-1 min-w-0">
                   <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">SALDO BANCARIO</p>
-                  {isEditingSaldo ? (
-                    <div className="flex items-center gap-2 mt-1">
-                      <input
-                        type="number"
-                        min="0"
-                        value={saldoInput}
-                        onChange={e => setSaldoInput(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter') confirmInlineEdit(); if (e.key === 'Escape') cancelInlineEdit(); }}
-                        autoFocus
-                        className="w-full px-2 py-1 border border-brand-primary/40 rounded-lg text-slate-900 font-bold text-lg focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
-                      />
-                    </div>
-                  ) : (
-                    <p className="text-2xl font-bold text-slate-900" title={bankBalance ? formatCurrency(bankBalance.amount) : undefined}>
-                      {bankBalance ? formatCompact(bankBalance.amount) : '—'}
-                    </p>
-                  )}
+                  <p className="text-2xl font-bold text-slate-900" title={bankBalance ? formatCurrency(bankBalance.amount) : undefined}>
+                    {bankBalance ? formatCompact(bankBalance.amount) : '—'}
+                  </p>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                  {isEditingSaldo ? (
-                    <>
-                      <button onClick={confirmInlineEdit} disabled={saldoSaving} className="p-1.5 rounded-lg bg-brand-success/10 text-brand-success hover:bg-brand-success/20 transition-colors">
-                        <Check size={16} />
-                      </button>
-                      <button onClick={cancelInlineEdit} className="p-1.5 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors">
-                        <X size={16} />
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <div className="p-2.5 rounded-xl bg-brand-primary/10 text-brand-primary group-hover:scale-110 transition-transform">
-                        <Landmark size={22} />
-                      </div>
-                      {isTesorero && (
-                        <button onClick={startInlineEdit} className="p-1.5 rounded-lg text-slate-300 hover:text-brand-primary hover:bg-slate-50 transition-colors" title="Editar saldo bancario">
-                          <Pencil size={15} />
-                        </button>
-                      )}
-                    </>
+                  <div className="p-2.5 rounded-xl bg-brand-primary/10 text-brand-primary group-hover:scale-110 transition-transform">
+                    <Landmark size={22} />
+                  </div>
+                  {isTesorero && (
+                    <button onClick={() => setShowSaldoModal(true)} className="p-1.5 rounded-lg text-slate-300 hover:text-brand-primary hover:bg-slate-50 transition-colors" title="Editar saldo bancario">
+                      <Pencil size={15} />
+                    </button>
                   )}
                 </div>
               </div>
+
+              {bankBalance?.accounts && bankBalance.accounts.length > 0 && (
+                <div className="space-y-1.5 mb-4 pb-4 border-b border-slate-100">
+                  {bankBalance.accounts.map((acc, i) => (
+                    <div key={i} className="flex items-center justify-between gap-2 text-sm">
+                      <span className="font-medium text-slate-500 truncate">{acc.label}</span>
+                      <span className="font-bold text-slate-700 shrink-0" title={formatCurrency(acc.amount)}>
+                        {formatCompact(acc.amount)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 {!hasSaldoBeenUpdatedToday() && isTesorero ? (
                   <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-brand-warning/15 text-brand-warning">Pendiente actualizar</span>

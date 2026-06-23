@@ -47,7 +47,15 @@ export interface DashboardSummary {
   weeklyData: WeeklyComparison[];
 }
 
+export interface BankAccount {
+  label: string;
+  amount: number;
+}
+
 export interface BankBalance {
+  /** Per-bank breakdown. */
+  accounts: BankAccount[];
+  /** Total — sum of all account amounts. */
   amount: number;
   updatedAt: string;
   updatedBy: string;
@@ -56,6 +64,6 @@ export interface BankBalance {
 export const dashboardService = {
   getSummary: () => api.get<DashboardSummary>('/dashboard'),
   getBankBalance: () => api.get<BankBalance>('/dashboard/bank-balance'),
-  updateBankBalance: (amount: number) =>
-    api.put<BankBalance>('/dashboard/bank-balance', { amount }),
+  updateBankBalance: (accounts: BankAccount[]) =>
+    api.put<BankBalance>('/dashboard/bank-balance', { accounts }),
 };

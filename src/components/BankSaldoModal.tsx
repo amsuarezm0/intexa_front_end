@@ -26,7 +26,7 @@ export function BankSaldoModal({ onConfirm, onSkip }: Props) {
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md"
+        className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 w-full max-w-md max-h-[90dvh] overflow-y-auto"
       >
         <div className="flex items-center gap-3 mb-2">
           <div className="p-2.5 rounded-xl bg-brand-primary/10 text-brand-primary">

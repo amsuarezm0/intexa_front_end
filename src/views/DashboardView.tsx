@@ -161,8 +161,8 @@ export function DashboardView({
       <div className="space-y-8 animate-in fade-in duration-500">
         <div className="flex justify-between items-end">
           <div className="space-y-2">
-            <Skeleton className="h-10 w-64" />
-            <Skeleton className="h-4 w-96" />
+            <Skeleton className="h-10 w-48 sm:w-64" />
+            <Skeleton className="h-4 w-full max-w-sm" />
           </div>
           <div className="flex gap-3">
             <Skeleton className="h-12 w-40 rounded-xl" />

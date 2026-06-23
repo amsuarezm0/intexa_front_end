@@ -78,7 +78,7 @@ export function ProjectionsView({ onCreateProjection, user }: { onCreateProjecti
   if (isLoading || !dataMap[30]) {
     return (
       <div className="space-y-8">
-        <Skeleton className="h-10 w-96 mb-8" />
+        <Skeleton className="h-10 w-full max-w-sm mb-8" />
         <SkeletonChart />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6"><SkeletonCard /><SkeletonCard /><SkeletonCard /></div>
       </div>

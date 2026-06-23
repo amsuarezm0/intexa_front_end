@@ -336,7 +336,7 @@ export function MainLayout({ children, currentView, onNavigate, onLogout, onSync
               </button>
 
               {showNotifications && (
-                <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white rounded-3xl shadow-2xl border border-slate-100 z-[200] overflow-hidden">
+                <div className="absolute right-0 top-full mt-2 w-[calc(100vw-1.5rem)] sm:w-96 bg-white rounded-3xl shadow-2xl border border-slate-100 z-[200] overflow-hidden">
                   <div className="p-5 border-b border-slate-100 flex justify-between items-center">
                     <div>
                       <h3 className="text-base font-black text-slate-900">Notificaciones</h3>

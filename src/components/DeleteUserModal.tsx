@@ -36,7 +36,7 @@ export function DeleteUserModal({ user, onSuccess, onClose }: Props) {
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         onClick={e => e.stopPropagation()}
-        className="bg-white rounded-[40px] p-8 sm:p-12 w-full max-w-sm shadow-2xl space-y-6 text-center"
+        className="bg-white rounded-3xl sm:rounded-[40px] p-6 sm:p-10 w-full max-w-sm shadow-2xl space-y-6 text-center max-h-[90dvh] overflow-y-auto"
       >
         <div className="w-16 h-16 bg-brand-danger/10 rounded-3xl flex items-center justify-center mx-auto">
           <Trash2 size={28} className="text-brand-danger" />

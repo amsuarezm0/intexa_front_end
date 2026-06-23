@@ -61,7 +61,7 @@ export function DocumentSearchModal({ initialQuery = '', onClose }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
+      <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl h-[85dvh] sm:h-auto sm:max-h-[85dvh] flex flex-col overflow-hidden">
 
         {/* Search bar */}
         <div className="p-5 border-b border-slate-100 flex items-center gap-3">
@@ -84,7 +84,7 @@ export function DocumentSearchModal({ initialQuery = '', onClose }: Props) {
         <div className="flex flex-1 min-h-0">
           {/* Results list */}
           {(!selected || results.length > 1) && (
-            <div className={cn("flex flex-col overflow-y-auto", selected ? "w-64 border-r border-slate-100" : "w-full")}>
+            <div className={cn("flex flex-col overflow-y-auto", selected ? "hidden md:flex md:w-72 border-r border-slate-100" : "w-full")}>
               {searched && results.length === 0 && (
                 <p className="px-6 py-10 text-sm text-slate-400 text-center">Sin resultados para "{query}"</p>
               )}
@@ -119,11 +119,15 @@ export function DocumentSearchModal({ initialQuery = '', onClose }: Props) {
           {/* Detail pane */}
           {selected && (
             <div className="flex-1 overflow-y-auto p-6 space-y-5">
-              {results.length > 1 && (
-                <button onClick={() => setSelected(null)} className="text-xs font-bold text-brand-primary hover:underline">
-                  ← Volver a resultados
-                </button>
-              )}
+              <button
+                onClick={() => setSelected(null)}
+                className={cn(
+                  "text-xs font-bold text-brand-primary hover:underline",
+                  results.length > 1 ? "" : "md:hidden"
+                )}
+              >
+                ← Volver a resultados
+              </button>
 
               <div className="flex items-start justify-between gap-4">
                 <div>

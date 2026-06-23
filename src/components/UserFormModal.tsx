@@ -92,7 +92,7 @@ export function UserFormModal(props: Props) {
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         onClick={e => e.stopPropagation()}
-        className="bg-white rounded-[40px] p-8 sm:p-12 w-full max-w-md shadow-2xl space-y-8"
+        className="bg-white rounded-3xl sm:rounded-[40px] p-6 sm:p-10 w-full max-w-md shadow-2xl space-y-6 sm:space-y-8 max-h-[90dvh] overflow-y-auto"
       >
         <div className="flex items-center justify-between">
           <div>

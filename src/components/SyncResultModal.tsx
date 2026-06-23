@@ -20,7 +20,7 @@ export function SyncResultModal({ result, onClose }: SyncResultModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md max-h-[90dvh] overflow-y-auto">
 
         {/* Header */}
         <div className={cn('px-6 py-5 flex items-start justify-between gap-4', hasErrors ? 'bg-brand-warning/10' : 'bg-brand-success/10')}>

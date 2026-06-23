@@ -1,4 +1,4 @@
-import { Check,ChevronDown,History,Palette,ShieldCheck,UserPlus } from 'lucide-react';
+import { Check,ChevronDown,History,KeyRound,Palette,ShieldCheck,UserPlus } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useEffect,useRef,useState } from 'react';
 import { DeleteUserModal } from '../components/DeleteUserModal';
@@ -31,6 +31,7 @@ export function SettingsView() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [showAddUser, setShowAddUser] = useState(false);
+  const [showSelfPassword, setShowSelfPassword] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<User | null>(null);
   const [selectedLog, setSelectedLog] = useState<ActivityLog | null>(null);
@@ -39,19 +40,21 @@ export function SettingsView() {
   const { locale, refreshSettings } = useSettings();
 
   useEffect(() => {
+    // User management and activity logs are admin-only on the API; non-admins
+    // only load their settings (currency/theme) to avoid a 403.
     Promise.all([
-      usersService.list(),
       settingsService.get(),
-      settingsService.getActivityLogs(),
-    ]).then(([u, s, l]) => {
-      setUsers(u);
+      isAdmin ? usersService.list() : Promise.resolve<User[]>([]),
+      isAdmin ? settingsService.getActivityLogs() : Promise.resolve<ActivityLog[]>([]),
+    ]).then(([s, u, l]) => {
       setSettings(s);
       savedRef.current = s;
+      setUsers(u);
       setLogs(l);
     })
     .catch((err: any) => setError(err.message ?? 'No se pudo cargar la configuración.'))
     .finally(() => setIsLoading(false));
-  }, []);
+  }, [isAdmin]);
 
   const handleSaveSettings = async () => {
     setSaving(true);
@@ -149,6 +152,40 @@ export function SettingsView() {
         )}
 
         <div className="space-y-10">
+          {!isAdmin && currentUser && (
+            <div className="bg-white p-5 sm:p-10 rounded-3xl sm:rounded-[48px] border border-slate-100 card-shadow space-y-6">
+              <h3 className="text-2xl font-black text-slate-900 tracking-tight">Mi Cuenta</h3>
+              <div className="flex items-center gap-5 p-4 sm:p-6 bg-slate-50 rounded-2xl sm:rounded-[32px]">
+                <div className="w-14 h-14 rounded-[20px] bg-brand-primary/10 text-brand-primary font-black text-xl flex items-center justify-center flex-shrink-0">
+                  {currentUser.name.charAt(0)}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-lg font-black text-slate-900 truncate">{currentUser.name}</p>
+                  <p className="text-sm font-semibold text-slate-400 truncate">{currentUser.email}</p>
+                  <span className="inline-block mt-1.5 text-[10px] font-black px-3 py-1 rounded-lg uppercase tracking-widest bg-slate-100 text-slate-500">
+                    {currentUser.role}
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowSelfPassword(true)}
+                className="w-full flex items-center justify-center gap-2 bg-brand-primary text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-brand-accent transition-all shadow-xl shadow-brand-primary/20"
+              >
+                <KeyRound size={16} /><span>Cambiar contraseña</span>
+              </button>
+            </div>
+          )}
+
+          {showSelfPassword && currentUser && (
+            <UserFormModal
+              mode="edit"
+              user={{ ...currentUser, createdAt: '' }}
+              isSelf
+              onSuccess={() => {}}
+              onClose={() => setShowSelfPassword(false)}
+            />
+          )}
+
           <div className="bg-white p-5 sm:p-10 rounded-3xl sm:rounded-[48px] border border-slate-100 card-shadow space-y-8">
             <h3 className="text-2xl font-black text-slate-900 tracking-tight">Preferencias de Moneda</h3>
             <div className="space-y-6">

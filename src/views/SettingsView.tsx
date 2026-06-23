@@ -107,7 +107,7 @@ export function SettingsView() {
         <p className="text-slate-500 font-semibold tracking-tight text-lg">Gestiona usuarios, moneda base y auditoría de actividad.</p>
       </div>
 
-      <div className={cn("grid grid-cols-1 gap-10", isAdmin ? "lg:grid-cols-3" : "lg:grid-cols-1 max-w-lg")}>
+      <div className={cn("grid grid-cols-1 gap-10", isAdmin && "lg:grid-cols-3")}>
         {isAdmin && (
         <div className="lg:col-span-2 bg-white p-5 sm:p-10 rounded-3xl sm:rounded-[48px] border border-slate-100 card-shadow space-y-10">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
@@ -160,7 +160,7 @@ export function SettingsView() {
         </div>
         )}
 
-        <div className="space-y-10">
+        <div className={cn(isAdmin ? "space-y-10" : "grid grid-cols-1 sm:grid-cols-2 gap-10 items-start")}>
           {!isAdmin && currentUser && (
             <div className="bg-white p-5 sm:p-10 rounded-3xl sm:rounded-[48px] border border-slate-100 card-shadow space-y-6">
               <h3 className="text-2xl font-black text-slate-900 tracking-tight">Mi Cuenta</h3>

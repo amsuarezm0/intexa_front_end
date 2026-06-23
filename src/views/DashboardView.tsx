@@ -214,54 +214,44 @@ export function DashboardView({
           </div>
         </div>
 
-        {/* Stats Grid — 3 cols: col 1 = Saldo Bancario/Ingresos, col 2 = Saldo Actual/Egresos, col 3 = Flujo Neto full-height */}
+        {/* Stats Grid — 3 cols: col 1 = Flujo Neto/Ingresos, col 2 = Saldo Actual/Egresos, col 3 = Saldo Bancario full-height */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:items-stretch">
-          {/* Col 1: Saldo Bancario + Ingresos */}
+          {/* Col 1: Flujo Neto + Ingresos */}
           <div className="flex flex-col gap-6">
-            <div className={cn(
-              "bg-white p-6 rounded-2xl border card-shadow group transition-all cursor-default",
-              !hasSaldoBeenUpdatedToday() && isTesorero
-                ? "border-brand-warning/30 ring-1 ring-brand-warning/30"
-                : "border-slate-100 hover:border-brand-primary/30"
-            )}>
-              <div className="flex justify-between items-start mb-4">
-                <div className="space-y-1 flex-1 min-w-0">
-                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">SALDO BANCARIO</p>
-                  <p className="text-2xl font-bold text-slate-900" title={bankBalance ? formatCurrency(bankBalance.amount) : undefined}>
-                    {bankBalance ? formatCompact(bankBalance.amount) : '—'}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                  <div className="p-2.5 rounded-xl bg-brand-primary/10 text-brand-primary group-hover:scale-110 transition-transform">
-                    <Landmark size={22} />
+            <div className="bg-brand-primary p-6 rounded-2xl text-white relative overflow-hidden group hover:scale-[1.01] transition-all cursor-default shadow-xl shadow-brand-primary/20">
+              <div className="relative z-10 flex flex-col h-full justify-between">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-[11px] font-bold opacity-70 uppercase tracking-widest">FLUJO NETO</p>
+                    <p className="text-2xl font-bold mt-1 break-words" title={formatCurrency(data.netFlow)}>{formatCompact(data.netFlow)}</p>
                   </div>
-                  {isTesorero && (
-                    <button onClick={() => setShowSaldoModal(true)} className="p-1.5 rounded-lg text-slate-300 hover:text-brand-primary hover:bg-slate-50 transition-colors" title="Editar saldo bancario">
-                      <Pencil size={15} />
-                    </button>
-                  )}
+                  <div className="bg-white/20 p-2.5 rounded-xl shrink-0 ml-2">
+                    <TrendingUp size={24} />
+                  </div>
                 </div>
-              </div>
-
-              {bankBalance?.accounts && bankBalance.accounts.length > 0 && (
-                <div className="space-y-1.5 mb-4 pb-4 border-b border-slate-100">
-                  {bankBalance.accounts.map((acc, i) => (
-                    <div key={i} className="flex items-center justify-between gap-2 text-sm">
-                      <span className="font-medium text-slate-500 truncate">{acc.label}</span>
-                      <span className="font-bold text-slate-700 shrink-0" title={formatCurrency(acc.amount)}>
-                        {formatCompact(acc.amount)}
-                      </span>
+                {(() => {
+                  const h = financialHealth(data.monthIncome, data.netFlow);
+                  return (
+                    <div className="space-y-3">
+                      <div className="h-px bg-white/10" />
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-end gap-0.5">
+                          {[...Array(5)].map((_, i) => (
+                            <div
+                              key={i}
+                              className={cn("w-1.5 rounded-full transition-all", i < h.bars ? h.barColor : "bg-white/20")}
+                              style={{ height: `${8 + i * 4}px` }}
+                            />
+                          ))}
+                        </div>
+                        <p className="text-xs font-medium text-white">Salud financiera: {h.label}</p>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
-              <div className="flex items-center gap-2">
-                {!hasSaldoBeenUpdatedToday() && isTesorero ? (
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-brand-warning/15 text-brand-warning">Pendiente actualizar</span>
-                ) : (
-                  <span className="text-xs text-slate-400 font-medium truncate">{saldoUpdatedLabel}</span>
-                )}
+                  );
+                })()}
               </div>
+              <div className="absolute top-0 right-0 w-36 h-36 bg-white/5 rounded-full -mr-18 -mt-18 group-hover:scale-125 transition-transform" />
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full -ml-12 -mb-12" />
             </div>
 
             <div className="bg-white p-6 rounded-2xl border border-slate-100 card-shadow group hover:border-brand-primary/30 transition-all cursor-default">
@@ -322,41 +312,51 @@ export function DashboardView({
             </div>
           </div>
 
-          {/* Col 3: Flujo Neto — stretches to match the two-card columns */}
-          <div className="bg-brand-primary p-6 rounded-2xl text-white relative overflow-hidden group hover:scale-[1.01] transition-all cursor-default shadow-xl shadow-brand-primary/20">
-            <div className="relative z-10 flex flex-col h-full justify-between">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-[11px] font-bold opacity-70 uppercase tracking-widest">FLUJO NETO</p>
-                  <p className="text-2xl font-bold mt-1 break-words" title={formatCurrency(data.netFlow)}>{formatCompact(data.netFlow)}</p>
-                </div>
-                <div className="bg-white/20 p-2.5 rounded-xl shrink-0 ml-2">
-                  <TrendingUp size={24} />
-                </div>
+          {/* Col 3: Saldo Bancario — stretches to match the two-card columns */}
+          <div className={cn(
+            "bg-white p-6 rounded-2xl border card-shadow group transition-all cursor-default",
+            !hasSaldoBeenUpdatedToday() && isTesorero
+              ? "border-brand-warning/30 ring-1 ring-brand-warning/30"
+              : "border-slate-100 hover:border-brand-primary/30"
+          )}>
+            <div className="flex justify-between items-start mb-4">
+              <div className="space-y-1 flex-1 min-w-0">
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">SALDO BANCARIO</p>
+                <p className="text-2xl font-bold text-slate-900" title={bankBalance ? formatCurrency(bankBalance.amount) : undefined}>
+                  {bankBalance ? formatCompact(bankBalance.amount) : '—'}
+                </p>
               </div>
-              {(() => {
-                const h = financialHealth(data.monthIncome, data.netFlow);
-                return (
-                  <div className="space-y-3">
-                    <div className="h-px bg-white/10" />
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-end gap-0.5">
-                        {[...Array(5)].map((_, i) => (
-                          <div
-                            key={i}
-                            className={cn("w-1.5 rounded-full transition-all", i < h.bars ? h.barColor : "bg-white/20")}
-                            style={{ height: `${8 + i * 4}px` }}
-                          />
-                        ))}
-                      </div>
-                      <p className="text-xs font-medium text-white">Salud financiera: {h.label}</p>
-                    </div>
-                  </div>
-                );
-              })()}
+              <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                <div className="p-2.5 rounded-xl bg-brand-primary/10 text-brand-primary group-hover:scale-110 transition-transform">
+                  <Landmark size={22} />
+                </div>
+                {isTesorero && (
+                  <button onClick={() => setShowSaldoModal(true)} className="p-1.5 rounded-lg text-slate-300 hover:text-brand-primary hover:bg-slate-50 transition-colors" title="Editar saldo bancario">
+                    <Pencil size={15} />
+                  </button>
+                )}
+              </div>
             </div>
-            <div className="absolute top-0 right-0 w-36 h-36 bg-white/5 rounded-full -mr-18 -mt-18 group-hover:scale-125 transition-transform" />
-            <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full -ml-12 -mb-12" />
+
+            {bankBalance?.accounts && bankBalance.accounts.length > 0 && (
+              <div className="space-y-1.5 mb-4 pb-4 border-b border-slate-100">
+                {bankBalance.accounts.map((acc, i) => (
+                  <div key={i} className="flex items-center justify-between gap-2 text-sm">
+                    <span className="font-medium text-slate-500 truncate">{acc.label}</span>
+                    <span className="font-bold text-slate-700 shrink-0" title={formatCurrency(acc.amount)}>
+                      {formatCompact(acc.amount)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              {!hasSaldoBeenUpdatedToday() && isTesorero ? (
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-brand-warning/15 text-brand-warning">Pendiente actualizar</span>
+              ) : (
+                <span className="text-xs text-slate-400 font-medium truncate">{saldoUpdatedLabel}</span>
+              )}
+            </div>
           </div>
         </div>
 

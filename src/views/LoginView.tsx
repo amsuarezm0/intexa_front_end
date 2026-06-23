@@ -4,6 +4,7 @@ import { useEffect,useState } from 'react';
 import type { LoggedInUser } from '../App';
 import { BrandLogo } from '../components/BrandLogo';
 import { setToken } from '../lib/api';
+import { friendlyAuthError } from '../lib/authErrors';
 import { authService } from '../services';
 
 // Curated Intexa photos for the login background slideshow (served from /public).
@@ -26,13 +27,15 @@ function shuffle<T>(arr: T[]): T[] {
 
 interface LoginViewProps {
   onLogin: (user: LoggedInUser) => void;
+  /** Error from a failed Microsoft redirect login, shown on mount. */
+  initialError?: string;
 }
 
-export function LoginView({ onLogin }: LoginViewProps) {
+export function LoginView({ onLogin, initialError }: LoginViewProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState(initialError ?? '');
   const [loading, setLoading] = useState(false);
   const [msLoading, setMsLoading] = useState(false);
 
@@ -55,7 +58,7 @@ export function LoginView({ onLogin }: LoginViewProps) {
       // Redirige a Microsoft; el login se completa al volver, en App.tsx.
       await authService.loginWithMicrosoft();
     } catch (err: any) {
-      setError(err.message ?? 'Error al iniciar sesión con Microsoft');
+      setError(friendlyAuthError(err?.message));
       setMsLoading(false);
     }
   };
@@ -69,7 +72,7 @@ export function LoginView({ onLogin }: LoginViewProps) {
       setToken(res.token);
       onLogin(res.user);
     } catch (err: any) {
-      setError(err.message ?? 'Error al iniciar sesión');
+      setError(friendlyAuthError(err?.message));
     } finally {
       setLoading(false);
     }

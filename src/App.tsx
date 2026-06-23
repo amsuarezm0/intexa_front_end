@@ -4,6 +4,7 @@ import { ToastProvider } from './contexts/ToastContext';
 import { DocumentSearchModal } from './components/DocumentSearchModal';
 import { MainLayout } from './layouts/MainLayout';
 import { clearToken,getStoredUser,getToken,isTokenExpired,setStoredUser,setToken } from './lib/api';
+import { friendlyAuthError } from './lib/authErrors';
 import { authService } from './services';
 import { CashFlowView } from './views/CashFlowView';
 import { CreateMovementView } from './views/CreateMovementView';
@@ -26,6 +27,9 @@ export default function App() {
   const [user, setUser] = useState<LoggedInUser | null>(() => getStoredUser());
   const [refreshKey, setRefreshKey] = useState(0);
   const [searchQuery, setSearchQuery] = useState<string | null>(null);
+  // Surfaced on the login screen when a Microsoft redirect login is rejected
+  // (e.g. the account's domain is not authorised).
+  const [authError, setAuthError] = useState('');
   // True while we resolve a Microsoft redirect, so we don't flash the login view.
   const [resolvingAuth, setResolvingAuth] = useState(
     () => /(?:code|state|error|session_state)=/.test(window.location.hash + window.location.search)
@@ -64,7 +68,7 @@ export default function App() {
           handleLogin(res.user);
         }
       })
-      .catch(() => { /* on failure the login view is shown */ })
+      .catch((err: any) => setAuthError(friendlyAuthError(err?.message)))
       .finally(() => setResolvingAuth(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -88,7 +92,7 @@ export default function App() {
   const renderView = () => {
     switch (currentView) {
       case 'login':
-        return <LoginView onLogin={handleLogin} />;
+        return <LoginView onLogin={handleLogin} initialError={authError} />;
       case 'dashboard':
         return <DashboardView key={refreshKey} onCreateMovement={() => handleNavigate('create-movement')} user={user} />;
       case 'cashflow':
@@ -122,7 +126,7 @@ export default function App() {
   }
 
   if (currentView === 'login') {
-    return <LoginView onLogin={handleLogin} />;
+    return <LoginView onLogin={handleLogin} initialError={authError} />;
   }
 
   return (

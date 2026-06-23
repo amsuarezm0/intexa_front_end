@@ -42,23 +42,25 @@ export function SettingsView() {
   useEffect(() => {
     let active = true;
 
-    // Settings (currency/theme) are available to every role and gate the view:
-    // if this fails it's a real error worth surfacing.
-    settingsService.get()
-      .then(s => {
-        if (!active) return;
-        setSettings(s);
-        savedRef.current = s;
-      })
-      .catch((err: any) => { if (active) setError(err.message ?? 'No se pudo cargar la configuración.'); })
-      .finally(() => { if (active) setIsLoading(false); });
+    // Build the request list according to the current role so we never issue a
+    // request the role isn't allowed to make. Each task handles its own outcome,
+    // so the combined Promise.all always resolves.
+    const tasks: Promise<void>[] = [
+      // Settings (currency/theme) are available to every role.
+      settingsService.get()
+        .then(s => { if (active) { setSettings(s); savedRef.current = s; } })
+        .catch((err: any) => { if (active) setError(err.message ?? 'No se pudo cargar la configuración.'); }),
+    ];
 
-    // User management and activity logs are ADMINISTRADOR-only on the API. Only
-    // request them for admins, and never let a 403/failure block the view.
+    // User management and activity logs are ADMINISTRADOR-only on the API.
     if (isAdmin) {
-      usersService.list().then(u => { if (active) setUsers(u); }).catch(() => {});
-      settingsService.getActivityLogs().then(l => { if (active) setLogs(l); }).catch(() => {});
+      tasks.push(
+        usersService.list().then(u => { if (active) setUsers(u); }).catch(() => {}),
+        settingsService.getActivityLogs().then(l => { if (active) setLogs(l); }).catch(() => {}),
+      );
     }
+
+    Promise.all(tasks).finally(() => { if (active) setIsLoading(false); });
 
     return () => { active = false; };
   }, [isAdmin]);

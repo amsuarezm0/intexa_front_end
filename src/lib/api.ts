@@ -76,9 +76,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       ...(init?.headers ?? {}),
     },
   });
-  if (res.status === 401) {
+  // A 401 on an authenticated request means the session expired: clear it and
+  // let App.tsx switch to the login view (no full reload). We deliberately never
+  // settle so the caller's UI doesn't flash an error mid-redirect.
+  // The /auth/* endpoints (login, microsoft) are the exception: there a 401 is a
+  // real "invalid credentials" result the caller must see, so it falls through
+  // to throw below instead of hanging.
+  if (res.status === 401 && !path.startsWith('/auth/')) {
     clearToken();
-    // App.tsx listens for this and switches to the login view (no full reload).
     window.dispatchEvent(new Event('auth:session-expired'));
     return new Promise(() => {});
   }

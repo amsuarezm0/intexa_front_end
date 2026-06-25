@@ -4,6 +4,7 @@ ArrowLeftRight,
 BarChart3,
 Bell,
 CheckCircle2,
+ChevronDown,
 LayoutDashboard,
 LogOut,
 Menu,
@@ -44,9 +45,11 @@ export function MainLayout({ children, currentView, onNavigate, onLogout, onSync
   const [hasData, setHasData] = useState(() => localStorage.getItem('arca_has_synced_data') === 'true');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const [notifications, setNotifications] = useState<NotificationSummary | null>(null);
   const syncMenuRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const { formatCurrency } = useSettings();
 
   useEffect(() => {
@@ -61,6 +64,9 @@ export function MainLayout({ children, currentView, onNavigate, onLogout, onSync
       }
       if (syncMenuRef.current && !syncMenuRef.current.contains(e.target as Node)) {
         setShowSyncMenu(false);
+      }
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setShowUserMenu(false);
       }
     }
     document.addEventListener('mousedown', handleClick);
@@ -101,7 +107,6 @@ export function MainLayout({ children, currentView, onNavigate, onLogout, onSync
     { id: 'projections', label: 'Proyecciones', icon: TrendingUp },
     { id: 'movements', label: 'Movimientos', icon: ArrowLeftRight },
     { id: 'reports', label: 'Reportes', icon: BarChart3 },
-    { id: 'settings', label: 'Configuración', icon: Settings },
   ];
 
   return (
@@ -151,16 +156,6 @@ export function MainLayout({ children, currentView, onNavigate, onLogout, onSync
             );
           })}
         </nav>
-
-        <div className="p-4 border-t border-slate-100 space-y-1">
-          <button
-            onClick={onLogout}
-            className="w-full flex items-center gap-3 px-4 py-2 text-slate-500 hover:text-brand-primary text-sm transition-colors"
-          >
-            <LogOut size={18} />
-            <span>Cerrar Sesión</span>
-          </button>
-        </div>
       </aside>
 
       {/* Main Content */}
@@ -387,18 +382,51 @@ export function MainLayout({ children, currentView, onNavigate, onLogout, onSync
 
             <div className="hidden sm:block h-8 w-px bg-slate-200 mx-1" />
 
-            <div className="flex items-center gap-2 sm:gap-3">
-              {/* Name/role hidden on mobile */}
-              <div className="hidden sm:block text-right">
-                <p className="text-sm font-semibold text-slate-900 leading-tight">{user?.name ?? '—'}</p>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{user?.role ?? ''}</p>
-              </div>
-              <div className="relative">
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-brand-primary/10 text-brand-primary font-black text-lg flex items-center justify-center ring-2 ring-slate-100">
-                  {user?.name?.charAt(0)?.toUpperCase() ?? '?'}
+            <div className="relative" ref={userMenuRef}>
+              <button
+                onClick={() => setShowUserMenu(v => !v)}
+                className="flex items-center gap-2 sm:gap-3 rounded-xl py-1 pl-1 pr-1.5 hover:bg-slate-50 transition-colors"
+                title="Cuenta"
+              >
+                {/* Name/role hidden on mobile */}
+                <div className="hidden sm:block text-right">
+                  <p className="text-sm font-semibold text-slate-900 leading-tight">{user?.name ?? '—'}</p>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{user?.role ?? ''}</p>
                 </div>
-                <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-brand-success border-2 border-white rounded-full shadow-sm" />
-              </div>
+                <div className="relative">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-brand-primary/10 text-brand-primary font-black text-lg flex items-center justify-center ring-2 ring-slate-100">
+                    {user?.name?.charAt(0)?.toUpperCase() ?? '?'}
+                  </div>
+                  <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-brand-success border-2 border-white rounded-full shadow-sm" />
+                </div>
+                <ChevronDown size={16} className={cn("text-slate-400 transition-transform", showUserMenu && "rotate-180")} />
+              </button>
+
+              {showUserMenu && (
+                <div className="absolute right-0 top-full mt-2 w-60 bg-white rounded-2xl shadow-xl border border-slate-100 z-[200] overflow-hidden">
+                  <div className="px-5 py-4 border-b border-slate-100">
+                    <p className="text-sm font-bold text-slate-900 leading-tight truncate">{user?.name ?? '—'}</p>
+                    <p className="text-xs text-slate-400 truncate">{user?.email ?? ''}</p>
+                    <p className="text-[10px] text-brand-primary font-bold uppercase tracking-wider mt-1">{user?.role ?? ''}</p>
+                  </div>
+                  <div className="p-1">
+                    <button
+                      onClick={() => { setShowUserMenu(false); handleNavigate('settings'); }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 rounded-xl transition-colors"
+                    >
+                      <Settings size={18} className="text-slate-400" />
+                      <span>Configuración</span>
+                    </button>
+                    <button
+                      onClick={() => { setShowUserMenu(false); onLogout?.(); }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-brand-accent hover:bg-brand-accent/5 rounded-xl transition-colors"
+                    >
+                      <LogOut size={18} />
+                      <span>Cerrar Sesión</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </header>

@@ -25,6 +25,11 @@ export interface CashFlowSummary {
   alerts: CashFlowAlert[];
 }
 
+export interface Installment {
+  dueDate: string;
+  value: number;
+}
+
 export interface PeriodInvoice {
   id: string;
   date: string;
@@ -37,6 +42,8 @@ export interface PeriodInvoice {
   category: string;
   source: string;
   detail: string;
+  installments?: Installment[];
+  pendingInstallments?: Installment[];
 }
 
 export interface PeriodPurchase {
@@ -51,6 +58,8 @@ export interface PeriodPurchase {
   category: string;
   source: string;
   detail: string;
+  installments?: Installment[];
+  pendingInstallments?: Installment[];
 }
 
 export interface PeriodData {

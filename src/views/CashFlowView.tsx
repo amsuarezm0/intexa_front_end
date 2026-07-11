@@ -97,15 +97,38 @@ function sumTxs(txs: Transaction[]) {
   };
 }
 
-function mergePoint(base: ReturnType<typeof sumTxs>, invs: PeriodInvoice[], purs: PeriodPurchase[]): ReturnType<typeof sumTxs> {
+function mergePoint(base: ReturnType<typeof sumTxs>, pendInc: number, pendExp: number): ReturnType<typeof sumTxs> {
   return {
     ...base,
-    pendingIngresos: base.pendingIngresos + invs.reduce((s, inv) => s + inv.balance, 0),
-    pendingEgresos:  base.pendingEgresos  + purs.reduce((s, pur) => s + pur.balance, 0),
+    pendingIngresos: base.pendingIngresos + pendInc,
+    pendingEgresos:  base.pendingEgresos  + pendExp,
   };
 }
 
+// pendingFlows spreads a document's unpaid amount across its installment due
+// dates (dateKey → amount). Without a schedule it falls back to the whole
+// balance on the effective due date — matching the pre-installment behavior.
+function pendingFlows(doc: { pendingInstallments?: { dueDate: string; value: number }[]; balance: number; date: string; dueDate: string }): { key: string; amount: number }[] {
+  const sched = doc.pendingInstallments;
+  if (sched && sched.length) {
+    return sched.map(s => ({ key: dateKey(parseTxDate(s.dueDate)), amount: s.value }));
+  }
+  return [{ key: dateKey(effDate(doc)), amount: doc.balance }];
+}
+
+function pendingByKey(docs: { pendingInstallments?: { dueDate: string; value: number }[]; balance: number; date: string; dueDate: string }[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const doc of docs) {
+    for (const f of pendingFlows(doc)) out[f.key] = (out[f.key] ?? 0) + f.amount;
+  }
+  return out;
+}
+
 function buildChart(txs: Transaction[], invs: PeriodInvoice[], purs: PeriodPurchase[], period: Period, ref: Date): ChartPoint[] {
+  // Pending inflows/outflows bucketed per day from each doc's unpaid installments.
+  const invByKey = pendingByKey(invs);
+  const purByKey = pendingByKey(purs);
+
   if (period === 'week') {
     const dow    = ref.getDay();
     const offset = dow === 0 ? 6 : dow - 1;
@@ -113,9 +136,7 @@ function buildChart(txs: Transaction[], invs: PeriodInvoice[], purs: PeriodPurch
       const d = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate() - offset + i);
       const key = dateKey(d);
       const dayTxs  = txs.filter(tx => dateKey(parseTxDate(tx.date)) === key);
-      const dayInvs = invs.filter(inv => dateKey(effDate(inv)) === key);
-      const dayPurs = purs.filter(pur => dateKey(effDate(pur)) === key);
-      const sums = mergePoint(sumTxs(dayTxs), dayInvs, dayPurs);
+      const sums = mergePoint(sumTxs(dayTxs), invByKey[key] ?? 0, purByKey[key] ?? 0);
       return { label: DAYS_ES[d.getDay()], date: d.getDate(), ...sums };
     });
   }
@@ -123,10 +144,8 @@ function buildChart(txs: Transaction[], invs: PeriodInvoice[], purs: PeriodPurch
   if (period === 'day') {
     const key = dateKey(ref);
     const dayTxs  = txs.filter(tx => dateKey(parseTxDate(tx.date)) === key);
-    const dayInvs = invs.filter(inv => dateKey(effDate(inv)) === key);
-    const dayPurs = purs.filter(pur => dateKey(effDate(pur)) === key);
-    const invPendInc = dayInvs.reduce((s, inv) => s + inv.balance, 0);
-    const purPendEg  = dayPurs.reduce((s, pur) => s + pur.balance, 0);
+    const invPendInc = invByKey[key] ?? 0;
+    const purPendEg  = purByKey[key] ?? 0;
     const { ingresos, egresos, pendingIngresos, pendingEgresos, proyIngresos, proyEgresos } = sumTxs(dayTxs);
     const realIn  = dayTxs.filter(t => !t.isProjection && t.type === 'Ingreso');
     const realEg  = dayTxs.filter(t => !t.isProjection && t.type === 'Egreso');
@@ -147,9 +166,7 @@ function buildChart(txs: Transaction[], invs: PeriodInvoice[], purs: PeriodPurch
   while (cur <= lastDay) {
     const key = dateKey(cur);
     const dayTxs  = txs.filter(tx => dateKey(parseTxDate(tx.date)) === key);
-    const dayInvs = invs.filter(inv => dateKey(effDate(inv)) === key);
-    const dayPurs = purs.filter(pur => dateKey(effDate(pur)) === key);
-    const sums = mergePoint(sumTxs(dayTxs), dayInvs, dayPurs);
+    const sums = mergePoint(sumTxs(dayTxs), invByKey[key] ?? 0, purByKey[key] ?? 0);
     points.push({ label: DAYS_ES[cur.getDay()], date: cur.getDate(), ...sums });
     cur.setDate(cur.getDate() + 1);
   }

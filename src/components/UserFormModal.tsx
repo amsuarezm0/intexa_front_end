@@ -1,10 +1,11 @@
 import { ChevronDown, Eye, EyeOff, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useState } from 'react';
+import { roleLabel } from '../lib/roles';
 import { hashPassword } from '../lib/utils';
 import { usersService, type User } from '../services';
 
-const ROLES = ['ADMINISTRADOR', 'TESORERÍA', 'CONSULTA'];
+const ROLES = ['ADMINISTRADOR', 'TESORERÍA', 'GESTIÓN', 'CONSULTA'];
 
 const inputCls =
   'w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:bg-white focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/5 transition-all outline-none font-semibold disabled:opacity-60 disabled:cursor-not-allowed';
@@ -163,7 +164,7 @@ export function UserFormModal(props: Props) {
             <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest pl-1">Rol</label>
             <div className="relative">
               <select value={form.role} onChange={set('role')} disabled={isSelf} className={`${inputCls} pl-5 pr-12 appearance-none`}>
-                {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                {ROLES.map(r => <option key={r} value={r}>{roleLabel(r)}</option>)}
               </select>
               <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
             </div>

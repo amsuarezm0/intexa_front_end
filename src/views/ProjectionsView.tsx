@@ -7,6 +7,7 @@ import { ProjectionTable } from '../components/ProjectionTable';
 import { Skeleton,SkeletonCard,SkeletonChart } from '../components/Skeleton';
 import { TransactionDetailDrawer } from '../components/TransactionDetailDrawer';
 import { useSettings } from '../contexts/SettingsContext';
+import { canWriteProjections } from '../lib/roles';
 import { cn } from '../lib/utils';
 import { projectionsService,searchService,transactionsService,type ProjectionAlert,type ProjectionSummary,type SearchDocument,type Transaction } from '../services';
 
@@ -95,12 +96,14 @@ export function ProjectionsView({ onCreateProjection, user }: { onCreateProjecti
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Proyecciones Financieras</h1>
           <p className="text-slate-500 font-medium tracking-tight">Análisis predictivo de flujo de caja para la toma de decisiones estratégicas.</p>
         </div>
-        <button
-          onClick={onCreateProjection}
-          className="flex items-center gap-2 bg-brand-warning text-white px-5 py-2.5 rounded-xl font-bold hover:bg-brand-accent transition-colors shadow-lg shadow-brand-warning/20 text-sm"
-        >
-          <Plus size={18} /><span>Agregar proyección manual</span>
-        </button>
+        {canWriteProjections(user?.role) && (
+          <button
+            onClick={onCreateProjection}
+            className="flex items-center gap-2 bg-brand-warning text-white px-5 py-2.5 rounded-xl font-bold hover:bg-brand-accent transition-colors shadow-lg shadow-brand-warning/20 text-sm"
+          >
+            <Plus size={18} /><span>Agregar proyección manual</span>
+          </button>
+        )}
       </div>
 
       {/* Comparison cards — all 3 periods always visible */}

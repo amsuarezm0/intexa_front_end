@@ -12,6 +12,7 @@ import { useSettings } from '../contexts/SettingsContext';
 import { THEMES, useTheme, type ThemeId } from '../contexts/ThemeContext';
 import { useToast } from '../contexts/ToastContext';
 import { getStoredUser } from '../lib/api';
+import { roleLabel } from '../lib/roles';
 import { cn } from '../lib/utils';
 import { settingsService,usersService,type ActivityLog,type Settings,type User } from '../services';
 
@@ -172,7 +173,7 @@ export function SettingsView() {
                   <p className="text-lg font-black text-slate-900 truncate">{currentUser.name}</p>
                   <p className="text-sm font-semibold text-slate-400 truncate">{currentUser.email}</p>
                   <span className="inline-block mt-1.5 text-[10px] font-black px-3 py-1 rounded-lg uppercase tracking-widest bg-slate-100 text-slate-500">
-                    {currentUser.role}
+                    {roleLabel(currentUser.role)}
                   </span>
                 </div>
               </div>

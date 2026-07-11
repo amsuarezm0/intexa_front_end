@@ -7,7 +7,7 @@ import { Skeleton,SkeletonCard } from '../components/Skeleton';
 import { StatusBadge } from '../components/StatusBadge';
 import { TransactionDetailDrawer } from '../components/TransactionDetailDrawer';
 import { useSettings } from '../contexts/SettingsContext';
-import { canWrite } from '../lib/roles';
+import { canWrite, canWriteProjections } from '../lib/roles';
 import { cn } from '../lib/utils';
 import { cashFlowService,projectionsService,type CashFlowSummary,type PeriodData,type PeriodInvoice,type PeriodPurchase } from '../services';
 import { DocumentDetailDrawer } from '../components/DocumentDetailDrawer';
@@ -537,15 +537,15 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
                 </span>
               )}
             </button>
+            {canWriteProjections(user?.role) && (
+              <button onClick={onCreateProjection} className="flex items-center gap-2 bg-brand-warning text-white px-5 py-2.5 rounded-xl font-bold hover:bg-brand-accent transition-all shadow-lg shadow-brand-warning/20">
+                <Plus size={20} /><span>Nueva Proyección</span>
+              </button>
+            )}
             {canWrite(user?.role) && (
-              <>
-                <button onClick={onCreateProjection} className="flex items-center gap-2 bg-brand-warning text-white px-5 py-2.5 rounded-xl font-bold hover:bg-brand-accent transition-all shadow-lg shadow-brand-warning/20">
-                  <Plus size={20} /><span>Nueva Proyección</span>
-                </button>
-                <button onClick={onCreateMovement} className="flex items-center gap-2 bg-brand-dark text-white px-5 py-2.5 rounded-xl font-bold hover:bg-brand-accent transition-all shadow-lg shadow-brand-dark/20">
-                  <Plus size={20} /><span>Nuevo Movimiento</span>
-                </button>
-              </>
+              <button onClick={onCreateMovement} className="flex items-center gap-2 bg-brand-dark text-white px-5 py-2.5 rounded-xl font-bold hover:bg-brand-accent transition-all shadow-lg shadow-brand-dark/20">
+                <Plus size={20} /><span>Nuevo Movimiento</span>
+              </button>
             )}
           </div>
         </div>

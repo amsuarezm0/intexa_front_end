@@ -20,7 +20,7 @@ import type { LoggedInUser } from '../App';
 import { BrandLogo } from '../components/BrandLogo';
 import { SyncResultModal } from '../components/SyncResultModal';
 import { useSettings } from '../contexts/SettingsContext';
-import { canWrite } from '../lib/roles';
+import { canWrite, roleLabel } from '../lib/roles';
 import { cn } from '../lib/utils';
 import { notificationsService,siigoService,type NotificationSummary,type SiigoSyncMode,type SiigoSyncResult } from '../services';
 
@@ -391,7 +391,7 @@ export function MainLayout({ children, currentView, onNavigate, onLogout, onSync
                 {/* Name/role hidden on mobile */}
                 <div className="hidden sm:block text-right">
                   <p className="text-sm font-semibold text-slate-900 leading-tight">{user?.name ?? '—'}</p>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{user?.role ?? ''}</p>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{roleLabel(user?.role)}</p>
                 </div>
                 <div className="relative">
                   <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-brand-primary/10 text-brand-primary font-black text-lg flex items-center justify-center ring-2 ring-slate-100">
@@ -407,7 +407,7 @@ export function MainLayout({ children, currentView, onNavigate, onLogout, onSync
                   <div className="px-5 py-4 border-b border-slate-100">
                     <p className="text-sm font-bold text-slate-900 leading-tight truncate">{user?.name ?? '—'}</p>
                     <p className="text-xs text-slate-400 truncate">{user?.email ?? ''}</p>
-                    <p className="text-[10px] text-brand-primary font-bold uppercase tracking-wider mt-1">{user?.role ?? ''}</p>
+                    <p className="text-[10px] text-brand-primary font-bold uppercase tracking-wider mt-1">{roleLabel(user?.role)}</p>
                   </div>
                   <div className="p-1">
                     <button

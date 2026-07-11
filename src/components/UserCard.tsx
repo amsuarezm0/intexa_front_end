@@ -1,4 +1,5 @@
 import { Pencil, Trash2 } from 'lucide-react';
+import { roleLabel } from '../lib/roles';
 import { cn } from '../lib/utils';
 import type { User } from '../services';
 
@@ -12,6 +13,7 @@ interface Props {
 function roleColor(role: string) {
   if (role === 'ADMINISTRADOR') return 'bg-brand-primary/10 text-brand-primary';
   if (role === 'TESORERÍA') return 'bg-brand-success/10 text-brand-success';
+  if (role === 'GESTIÓN') return 'bg-brand-warning/10 text-brand-warning';
   return 'bg-slate-100 text-slate-500';
 }
 
@@ -29,7 +31,7 @@ export function UserCard({ user, currentUserId, onEdit, onDelete }: Props) {
       </div>
       <div className="flex items-center gap-4">
         <span className={cn('text-[10px] font-black px-4 py-2 rounded-xl uppercase tracking-widest', roleColor(user.role))}>
-          {user.role}
+          {roleLabel(user.role)}
         </span>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <button

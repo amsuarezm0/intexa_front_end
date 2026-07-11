@@ -1217,7 +1217,7 @@ hashPassword(plain):
     return  Array.from(buf).map(b => b.toString(16).padStart(2, '0')).join('')
 ```
 
-Roles disponibles: `ADMINISTRADOR`, `TESORERÍA`, `CONSULTA`. Rol por defecto al crear: `CONSULTA`.
+Roles disponibles: `ADMINISTRADOR` (acceso total), `TESORERÍA` (movimientos + sync Siigo), `GESTIÓN` (solo proyecciones), `CONSULTA` (solo lectura). Rol por defecto al crear: `CONSULTA`.
 
 ### 9.3 Preferencias de moneda — todos los roles
 

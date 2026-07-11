@@ -68,7 +68,10 @@ export function DocumentDetailDrawer({ doc, onClose }: Props) {
                   </p>
                   <p className="text-2xl font-bold text-slate-900">{formatCurrency(doc.balance)}</p>
                   {doc.balance !== doc.total && (
-                    <p className="text-xs text-slate-400 font-semibold mt-0.5">Total: {formatCurrency(doc.total)}</p>
+                    <div className="mt-0.5 space-y-0.5">
+                      <p className="text-xs text-slate-400 font-semibold">Total: {formatCurrency(doc.total)}</p>
+                      <p className="text-xs text-brand-success font-semibold">Pagado: {formatCurrency(doc.total - doc.balance)}</p>
+                    </div>
                   )}
                 </div>
               </div>

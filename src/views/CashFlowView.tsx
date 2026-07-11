@@ -553,6 +553,7 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
         <TransactionFilters
           show={showFilters}
           filters={filters}
+          showPartialStatus
           onChange={handleFilterChange}
           onClear={clearFilters}
         />

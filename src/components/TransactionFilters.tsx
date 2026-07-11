@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { cn } from '../lib/utils';
 
 export type TxTypeFilter   = '' | 'Ingreso' | 'Egreso';
-export type TxStatusFilter = '' | 'Completado' | 'Pendiente' | 'Anulado';
+export type TxStatusFilter = '' | 'Completado' | 'Parcial' | 'Pendiente' | 'Anulado';
 export type TxSourceFilter = '' | 'Siigo' | 'Manual';
 export type TxRecordFilter = '' | 'Movimiento' | 'Proyección';
 
@@ -20,6 +20,9 @@ interface Props {
   show:          boolean;
   filters:       TxFilters;
   showDateFilter?: boolean;
+  // Only Siigo invoices/purchases (shown in Cash Flow) carry a "Parcial" status;
+  // the Movements list holds only cash transactions, so it opts out.
+  showPartialStatus?: boolean;
   onChange:      (next: Partial<TxFilters>) => void;
   onClear:       () => void;
 }
@@ -32,11 +35,15 @@ const btn = (active: boolean, color?: string) =>
 
 const statusColor: Record<string, string> = {
   Completado: 'bg-brand-success text-white border-brand-success',
+  Parcial:    'bg-brand-warning text-white border-brand-warning',
   Pendiente:  'bg-brand-primary text-white border-brand-primary',
   Anulado:    'bg-brand-danger  text-white border-brand-danger',
 };
 
-export function TransactionFilters({ show, filters, showDateFilter, onChange, onClear }: Props) {
+export function TransactionFilters({ show, filters, showDateFilter, showPartialStatus, onChange, onClear }: Props) {
+  const statuses: TxStatusFilter[] = showPartialStatus
+    ? ['Completado', 'Parcial', 'Pendiente', 'Anulado']
+    : ['Completado', 'Pendiente', 'Anulado'];
   const { type, status, source, record, dateFrom = '', dateTo = '' } = filters;
 
   const activeCount =
@@ -79,7 +86,7 @@ export function TransactionFilters({ show, filters, showDateFilter, onChange, on
               <div className="flex items-center gap-3">
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Estado</span>
                 <div className="flex gap-2">
-                  {(['Completado', 'Pendiente', 'Anulado'] as TxStatusFilter[]).map(v => (
+                  {statuses.map(v => (
                     <button key={v} onClick={() => toggle('status', v)}
                       className={btn(status === v, statusColor[v])}>{v}</button>
                   ))}
@@ -152,7 +159,7 @@ export function TransactionFilters({ show, filters, showDateFilter, onChange, on
           )}
           {status && (
             <Chip
-              color={status === 'Completado' ? 'success' : status === 'Pendiente' ? 'primary' : 'danger'}
+              color={status === 'Completado' ? 'success' : status === 'Parcial' ? 'warning' : status === 'Pendiente' ? 'primary' : 'danger'}
               onRemove={() => onChange({ status: '' })}
             >{status}</Chip>
           )}

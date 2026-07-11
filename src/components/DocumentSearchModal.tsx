@@ -148,16 +148,46 @@ export function DocumentSearchModal({ initialQuery = '', onClose }: Props) {
                     {selected.docType === 'RC' || selected.docType === 'FV' ? '+' : '-'}{formatCurrency(selected.amount)}
                   </span>
                 </Row>
-                {selected.counterparty && <Row label={selected.docType === 'FV' ? 'Cliente' : 'Proveedor'}><span className="text-sm font-semibold text-slate-900">{selected.counterparty}</span></Row>}
+                {selected.balance != null && selected.balance > 0 && (
+                  <Row label="Saldo pendiente"><span className="text-sm font-black text-brand-warning">{formatCurrency(selected.balance)}</span></Row>
+                )}
+                {selected.type && <Row label="Tipo"><span className="text-sm font-semibold text-slate-900">{selected.type}</span></Row>}
+                {selected.counterparty && (
+                  <Row label={selected.docType === 'FV' ? 'Cliente' : selected.docType === 'FC' ? 'Proveedor' : 'Tercero'}>
+                    <span className="text-sm font-semibold text-slate-900 text-right">{selected.counterparty}</span>
+                  </Row>
+                )}
+                {selected.counterpartyId && <Row label="Identificación"><span className="text-sm font-semibold text-slate-700">{selected.counterpartyId}</span></Row>}
                 <Row label="Fecha"><span className="text-sm font-semibold text-slate-700">{selected.date}</span></Row>
                 {selected.dueDate && <Row label="Vencimiento"><span className="text-sm font-semibold text-slate-700">{selected.dueDate}</span></Row>}
-                <Row label="Categoría"><span className="text-xs font-bold px-3 py-1 bg-white rounded-lg border border-slate-200 text-slate-600">{selected.category}</span></Row>
+                {(selected.prefix || selected.number) && (
+                  <Row label="Documento"><span className="text-sm font-semibold text-slate-700">{[selected.prefix, selected.number].filter(Boolean).join(' ')}</span></Row>
+                )}
+                {selected.source && <Row label="Origen"><span className="text-sm font-semibold text-slate-700">{selected.source}</span></Row>}
+                <Row label="Categoría"><span className="text-xs font-bold px-3 py-1 bg-white rounded-lg border border-slate-200 text-slate-600 text-right">{selected.category}</span></Row>
+                {selected.isProjection && <Row label="Proyección"><span className="text-xs font-bold px-3 py-1 bg-brand-warning/10 text-brand-warning rounded-lg">Sí</span></Row>}
               </div>
+
+              {selected.detail && selected.detail !== selected.description && (
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Detalle</p>
+                  <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">{selected.detail}</p>
+                </div>
+              )}
 
               {selected.description && (
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Detalle</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Descripción</p>
                   <p className="text-sm text-slate-700 leading-relaxed">{selected.description}</p>
+                </div>
+              )}
+
+              {(selected.externalId || selected.syncedAt || selected.createdAt || selected.updatedAt) && (
+                <div className="border-t border-slate-100 pt-4 space-y-1.5">
+                  {selected.externalId && <MetaRow label="ID externo" value={selected.externalId} />}
+                  {selected.syncedAt && <MetaRow label="Sincronizado" value={selected.syncedAt.slice(0, 16).replace('T', ' ')} />}
+                  {selected.createdAt && <MetaRow label="Creado" value={selected.createdAt.slice(0, 16).replace('T', ' ')} />}
+                  {selected.updatedAt && <MetaRow label="Actualizado" value={selected.updatedAt.slice(0, 16).replace('T', ' ')} />}
                 </div>
               )}
             </div>
@@ -173,6 +203,15 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
     <div className="flex items-center justify-between gap-4">
       <span className="text-xs font-bold text-slate-400 uppercase tracking-widest shrink-0">{label}</span>
       {children}
+    </div>
+  );
+}
+
+function MetaRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest shrink-0">{label}</span>
+      <span className="text-[11px] font-mono text-slate-400 truncate">{value}</span>
     </div>
   );
 }

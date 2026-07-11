@@ -7,10 +7,22 @@ export interface SearchDocument {
   date: string;
   dueDate?: string;
   description: string;
+  detail?: string;
+  category: string;
+  type?: 'Ingreso' | 'Egreso';
   amount: number;
+  balance?: number;
   status: string;
   counterparty: string;
-  category: string;
+  counterpartyId?: string;
+  source?: string;
+  prefix?: string;
+  number?: number;
+  isProjection?: boolean;
+  externalId?: string;
+  syncedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export const searchService = {

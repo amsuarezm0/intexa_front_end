@@ -9,7 +9,7 @@ import { downloadReportPDF, PDF_BAR_HEX } from '../lib/reportPdf';
 import { cn } from '../lib/utils';
 import { reportsService,type ReportPeriod,type ReportSummary } from '../services';
 
-const CAT_PAGE_SIZE = 6;
+const CAT_PAGE_SIZE = 5;
 
 const PERIODS: { key: ReportPeriod; label: string }[] = [
   { key: 'mensual', label: 'Mensual' },

@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs';
-import { AlertTriangle,ChevronRight,Download,FileText,Sparkles,TrendingDown,TrendingUp,X } from 'lucide-react';
+import { AlertTriangle,ChevronLeft,ChevronRight,Download,FileText,Sparkles,TrendingDown,TrendingUp,X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useEffect,useRef,useState } from 'react';
 import { Bar,CartesianGrid,ComposedChart,Line,ReferenceLine,ResponsiveContainer,Tooltip,XAxis,YAxis } from 'recharts';
@@ -8,6 +8,8 @@ import { useSettings } from '../contexts/SettingsContext';
 import { downloadReportPDF, PDF_BAR_HEX } from '../lib/reportPdf';
 import { cn } from '../lib/utils';
 import { reportsService,type ReportPeriod,type ReportSummary } from '../services';
+
+const CAT_PAGE_SIZE = 6;
 
 const PERIODS: { key: ReportPeriod; label: string }[] = [
   { key: 'mensual', label: 'Mensual' },
@@ -135,12 +137,14 @@ export function ReportsView() {
   const [showInsight, setShowInsight] = useState(false);
   const [error, setError] = useState('');
   const [period, setPeriod] = useState<ReportPeriod>('mensual');
+  const [catPage, setCatPage] = useState(0);
   const chartCardRef = useRef<HTMLDivElement>(null);
   const exportMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setIsLoading(true);
     setError('');
+    setCatPage(0);
     reportsService.getSummary(period)
       .then(setData)
       .catch((err: any) => setError(err.message ?? 'No se pudo cargar los reportes.'))
@@ -295,24 +299,70 @@ export function ReportsView() {
           </div>
         </div>
 
-        <div className="bg-white p-5 sm:p-10 rounded-3xl sm:rounded-[48px] border border-slate-100 card-shadow">
+        <div className="bg-white p-5 sm:p-10 rounded-3xl sm:rounded-[48px] border border-slate-100 card-shadow flex flex-col">
           <h3 className="text-2xl font-black text-slate-900 tracking-tight">Gastos por Categoría</h3>
           <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-tight mb-8">{BREAKDOWN_SUBTITLE[period]}</p>
-          <div className="space-y-8">
-            {data.categoryBreakdown.map((cat, i) => (
-              <div key={i} className="space-y-3">
-                <div className="flex justify-between text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-                  <span>{cat.name}</span><span className="text-slate-900">{cat.value}%</span>
+          {(() => {
+            const cats = data.categoryBreakdown;
+            const pageCount = Math.ceil(cats.length / CAT_PAGE_SIZE);
+            const page = Math.min(catPage, Math.max(0, pageCount - 1));
+            const start = page * CAT_PAGE_SIZE;
+            return (
+              <>
+                <div className="space-y-8 flex-1">
+                  {cats.slice(start, start + CAT_PAGE_SIZE).map((cat, i) => {
+                    const idx = start + i;
+                    return (
+                      <div key={idx} className="space-y-3">
+                        <div className="flex justify-between text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                          <span>{cat.name}</span><span className="text-slate-900">{cat.value}%</span>
+                        </div>
+                        <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-1000"
+                            style={{ width: `${cat.value}%`, backgroundColor: PDF_BAR_HEX[idx % PDF_BAR_HEX.length] }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-1000"
-                    style={{ width: `${cat.value}%`, backgroundColor: PDF_BAR_HEX[i % PDF_BAR_HEX.length] }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
+                {pageCount > 1 && (
+                  <div className="flex items-center justify-between pt-8 mt-2">
+                    <button
+                      onClick={() => setCatPage(p => Math.max(0, p - 1))}
+                      disabled={page === 0}
+                      className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                      aria-label="Categorías anteriores"
+                    >
+                      <ChevronLeft size={18} />
+                    </button>
+                    <div className="flex items-center gap-1.5">
+                      {Array.from({ length: pageCount }).map((_, p) => (
+                        <button
+                          key={p}
+                          onClick={() => setCatPage(p)}
+                          aria-label={`Página ${p + 1}`}
+                          className={cn(
+                            "h-1.5 rounded-full transition-all",
+                            p === page ? "w-5 bg-slate-900" : "w-1.5 bg-slate-200 hover:bg-slate-300"
+                          )}
+                        />
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => setCatPage(p => Math.min(pageCount - 1, p + 1))}
+                      disabled={page >= pageCount - 1}
+                      className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                      aria-label="Categorías siguientes"
+                    >
+                      <ChevronRight size={18} />
+                    </button>
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
       </div>
 

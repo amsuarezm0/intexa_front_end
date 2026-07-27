@@ -7,7 +7,9 @@ TrendingUp
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useEffect,useState } from 'react';
+import { CurrencyInput } from '../components/CurrencyInput';
 import { useSettings } from '../contexts/SettingsContext';
+import { parseMoney } from '../lib/money';
 import { cn } from '../lib/utils';
 import { categoriesService,projectionsService,type Category,type CreateProjectionInput } from '../services';
 
@@ -50,7 +52,7 @@ export function CreateProjectionView({ onBack, onSave }: CreateProjectionViewPro
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const { formatCurrency, currencyCode } = useSettings();
+  const { formatCurrency, currencyCode, locale } = useSettings();
 
   useEffect(() => {
     categoriesService.list()
@@ -61,7 +63,9 @@ export function CreateProjectionView({ onBack, onSave }: CreateProjectionViewPro
       .catch(() => {});
   }, []);
 
-  const amountNum = parseFloat(amount.replace(/,/g, '.')) || 0;
+  const amountNum = parseMoney(amount, locale);
+  // Preview figures treat an unparseable amount as zero.
+  const previewAmount = isNaN(amountNum) ? 0 : amountNum;
 
   // A projection is only visible inside a horizon that reaches its date, so the
   // longest configured period is the effective limit.
@@ -83,6 +87,10 @@ export function CreateProjectionView({ onBack, onSave }: CreateProjectionViewPro
     }
     if (daysUntil !== null && daysUntil > maxDays) {
       setError(`La fecha esperada debe estar dentro de los próximos ${maxDays} días.`);
+      return;
+    }
+    if (isNaN(amountNum) || amountNum <= 0) {
+      setError('Ingrese un monto válido mayor a cero.');
       return;
     }
     setError('');
@@ -172,11 +180,10 @@ export function CreateProjectionView({ onBack, onSave }: CreateProjectionViewPro
                 <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest pl-1">MONTO ESPERADO ({currencyCode})</label>
                 <div className="relative">
                   <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
-                  <input
-                    type="text"
+                  <CurrencyInput
                     value={amount}
-                    onChange={e => setAmount(e.target.value)}
-                    placeholder="0,00"
+                    onChange={setAmount}
+                    aria-label={`Monto esperado en ${currencyCode}`}
                     className="w-full pl-10 pr-5 py-5 bg-slate-50 border border-slate-100 rounded-2xl font-black text-slate-900 outline-none focus:border-brand-primary transition-all text-right"
                   />
                 </div>
@@ -246,8 +253,8 @@ export function CreateProjectionView({ onBack, onSave }: CreateProjectionViewPro
                       <span className={cn("text-xs font-black uppercase tracking-widest", inWindow ? (type === 'Ingreso' ? "text-brand-success" : "text-brand-danger") : "text-slate-300")}>{d} días</span>
                     </div>
                     <span className={cn("text-sm font-extrabold", inWindow ? (type === 'Ingreso' ? "text-brand-success" : "text-brand-danger") : "text-slate-300")}>
-                      {inWindow && amountNum > 0
-                        ? `${type === 'Ingreso' ? '+' : '-'}${formatCurrency(amountNum)}`
+                      {inWindow && previewAmount > 0
+                        ? `${type === 'Ingreso' ? '+' : '-'}${formatCurrency(previewAmount)}`
                         : '—'}
                     </span>
                   </div>

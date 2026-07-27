@@ -7,7 +7,9 @@ TrendingUp,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useEffect,useState } from 'react';
+import { CurrencyInput } from '../components/CurrencyInput';
 import { useSettings } from '../contexts/SettingsContext';
+import { parseMoney } from '../lib/money';
 import { cn } from '../lib/utils';
 import { categoriesService,transactionsService,type Category,type TransactionSummary } from '../services';
 
@@ -27,6 +29,9 @@ export function CreateMovementView({ onBack, onSave }: CreateMovementViewProps) 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  const { formatCurrency, currencyCode, locale } = useSettings();
+  const amountNum = parseMoney(amount, locale);
+
   useEffect(() => {
     categoriesService.list()
       .then(cats => { setCategories(cats); if (cats.length > 0) setCategory(cats[0].name); })
@@ -41,6 +46,10 @@ export function CreateMovementView({ onBack, onSave }: CreateMovementViewProps) 
       setError('Por favor complete todos los campos requeridos.');
       return;
     }
+    if (isNaN(amountNum) || amountNum <= 0) {
+      setError('Ingrese un monto válido mayor a cero.');
+      return;
+    }
     setError('');
     setSaving(true);
     try {
@@ -49,7 +58,7 @@ export function CreateMovementView({ onBack, onSave }: CreateMovementViewProps) 
         description,
         category,
         type,
-        amount: parseFloat(amount.replace(/,/g, '.')),
+        amount: amountNum,
         status: 'Pendiente',
         source: 'Manual',
         isProjection: false,
@@ -62,8 +71,8 @@ export function CreateMovementView({ onBack, onSave }: CreateMovementViewProps) 
     }
   };
 
-  const amountNum = parseFloat(amount.replace(/,/g, '.')) || 0;
-  const { formatCurrency, currencyCode } = useSettings();
+  // Preview figures treat an unparseable amount as zero.
+  const previewAmount = isNaN(amountNum) ? 0 : amountNum;
 
   return (
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-8 pb-12">
@@ -123,11 +132,10 @@ export function CreateMovementView({ onBack, onSave }: CreateMovementViewProps) 
                 <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest pl-1">MONTO ({currencyCode})</label>
                 <div className="relative">
                   <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
-                  <input
-                    type="text"
+                  <CurrencyInput
                     value={amount}
-                    onChange={e => setAmount(e.target.value)}
-                    placeholder="0,00"
+                    onChange={setAmount}
+                    aria-label={`Monto en ${currencyCode}`}
                     className="w-full pl-10 pr-5 py-5 bg-slate-50 border border-slate-100 rounded-2xl font-black text-slate-900 outline-none focus:border-brand-primary transition-all text-right"
                   />
                 </div>
@@ -194,7 +202,7 @@ export function CreateMovementView({ onBack, onSave }: CreateMovementViewProps) 
               <div className="flex justify-between items-center">
                 <p className="text-sm font-bold text-slate-400">{type === 'Ingreso' ? 'Nuevo Ingreso' : 'Nuevo Egreso'}</p>
                 <p className={cn("text-lg font-black", type === 'Ingreso' ? "text-brand-success" : "text-brand-danger")}>
-                  {type === 'Ingreso' ? '+' : '-'} {formatCurrency(amountNum)}
+                  {type === 'Ingreso' ? '+' : '-'} {formatCurrency(previewAmount)}
                 </p>
               </div>
               <div className="pt-8 border-t border-slate-100 flex justify-between items-end">
@@ -202,7 +210,7 @@ export function CreateMovementView({ onBack, onSave }: CreateMovementViewProps) 
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Saldo Proyectado</p>
                   <p className="text-3xl font-black text-brand-primary">
                     {summary
-                      ? formatCurrency(summary.totalBalance + (type === 'Ingreso' ? amountNum : -amountNum))
+                      ? formatCurrency(summary.totalBalance + (type === 'Ingreso' ? previewAmount : -previewAmount))
                       : '—'}
                   </p>
                 </div>

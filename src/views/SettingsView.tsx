@@ -1,6 +1,7 @@
 import { Check,ChevronDown,History,KeyRound,Palette,ShieldCheck,UserPlus } from 'lucide-react';
 import { motion } from 'motion/react';
-import { useEffect,useRef,useState } from 'react';
+import { useCallback,useEffect,useRef,useState } from 'react';
+import { ErrorState } from '../components/ErrorState';
 import { DeleteUserModal } from '../components/DeleteUserModal';
 import { LogDetailModal } from '../components/LogDetailModal';
 import { LogRow } from '../components/LogRow';
@@ -40,8 +41,9 @@ export function SettingsView() {
   const LOG_PAGE_SIZE = 10;
   const { locale, refreshSettings } = useSettings();
 
-  useEffect(() => {
-    let active = true;
+  const load = useCallback(() => {
+    setIsLoading(true);
+    setError('');
 
     // Build the request list according to the current role so we never issue a
     // request the role isn't allowed to make. Each task handles its own outcome,
@@ -49,22 +51,22 @@ export function SettingsView() {
     const tasks: Promise<void>[] = [
       // Settings (currency/theme) are available to every role.
       settingsService.get()
-        .then(s => { if (active) { setSettings(s); savedRef.current = s; } })
-        .catch((err: any) => { if (active) setError(err.message ?? 'No se pudo cargar la configuración.'); }),
+        .then(s => { setSettings(s); savedRef.current = s; })
+        .catch((err: any) => setError(err.message ?? 'No se pudo cargar la configuración.')),
     ];
 
     // User management and activity logs are ADMINISTRADOR-only on the API.
     if (isAdmin) {
       tasks.push(
-        usersService.list().then(u => { if (active) setUsers(u); }).catch(() => {}),
-        settingsService.getActivityLogs().then(l => { if (active) setLogs(l); }).catch(() => {}),
+        usersService.list().then(setUsers).catch(() => {}),
+        settingsService.getActivityLogs().then(setLogs).catch(() => {}),
       );
     }
 
-    Promise.all(tasks).finally(() => { if (active) setIsLoading(false); });
-
-    return () => { active = false; };
+    return Promise.all(tasks).finally(() => setIsLoading(false));
   }, [isAdmin]);
+
+  useEffect(() => { load(); }, [load]);
 
   const handleSaveSettings = async () => {
     setSaving(true);
@@ -96,7 +98,7 @@ export function SettingsView() {
     }
   };
 
-  if (error) return <div className="p-8 text-brand-danger font-semibold">{error}</div>;
+  if (error) return <ErrorState message={error} onRetry={() => load().then(() => {})} />;
   if (isLoading) {
     return <div className="p-8 space-y-8"><Skeleton className="h-10 w-48" /><SkeletonCard /></div>;
   }

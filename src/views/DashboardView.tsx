@@ -14,7 +14,7 @@ Sparkles,
 TrendingUp,
 } from 'lucide-react';
 import { AnimatePresence,motion } from 'motion/react';
-import { useEffect,useState } from 'react';
+import { useCallback,useEffect,useState } from 'react';
 import {
 Bar,
 CartesianGrid,
@@ -29,10 +29,11 @@ YAxis,
 } from 'recharts';
 import type { LoggedInUser } from '../App';
 import { BankSaldoModal } from '../components/BankSaldoModal';
+import { ErrorState } from '../components/ErrorState';
 import { Skeleton,SkeletonCard,SkeletonChart } from '../components/Skeleton';
 import { TransactionDetailDrawer } from '../components/TransactionDetailDrawer';
 import { useSettings } from '../contexts/SettingsContext';
-import { PIE_COLORS } from '../lib/colors';
+import { useChartTheme } from '../lib/chartTheme';
 import { canWrite,isTreasury } from '../lib/roles';
 import { cn } from '../lib/utils';
 import type { Transaction } from '../services';
@@ -80,19 +81,29 @@ export function DashboardView({
   const [showSaldoModal, setShowSaldoModal] = useState(false);
   const [saldoSaving, setSaldoSaving] = useState(false);
   const { formatCurrency, formatCompact } = useSettings();
+  const chart = useChartTheme();
 
   const isTesorero = isTreasury(user?.role);
 
-  useEffect(() => {
-    dashboardService.getSummary()
-      .then(setData)
-      .catch((err: any) => setError(err.message ?? 'No se pudo cargar el dashboard.'))
-      .finally(() => setIsLoading(false));
-
-    dashboardService.getBankBalance()
-      .then(setBankBalance)
-      .catch(() => {});
+  // `silent` refreshes after a mutation without tearing the page down to
+  // skeletons; a failed silent refresh keeps the data already on screen.
+  const load = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) {
+      setIsLoading(true);
+      setError('');
+    }
+    try {
+      const summary = await dashboardService.getSummary();
+      setData(summary);
+      dashboardService.getBankBalance().then(setBankBalance).catch(() => {});
+    } catch (err: any) {
+      if (!silent) setError(err.message ?? 'No se pudo cargar el dashboard.');
+    } finally {
+      if (!silent) setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
     if (isTesorero && !hasSaldoBeenUpdatedToday()) {
@@ -137,7 +148,7 @@ export function DashboardView({
       .finally(() => setIsLoadingDetail(false));
   }
 
-  if (error) return <div className="p-8 text-brand-danger font-semibold">{error}</div>;
+  if (error) return <ErrorState message={error} onRetry={load} />;
   if (isLoading) {
     return (
       <div className="space-y-8 animate-in fade-in duration-500">
@@ -174,8 +185,8 @@ export function DashboardView({
         transaction={selectedTx}
         isLoading={isLoadingDetail}
         onClose={() => setSelectedTx(null)}
-        onDeleted={() => dashboardService.getSummary().then(setData)}
-        onUpdated={() => dashboardService.getSummary().then(setData)}
+        onDeleted={() => { setSelectedTx(null); load({ silent: true }); }}
+        onUpdated={tx => { setSelectedTx(tx); load({ silent: true }); }}
       />
       <AnimatePresence>
         {showSaldoModal && (
@@ -382,20 +393,20 @@ export function DashboardView({
             <div className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={data.chartData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }} barGap={4} barCategoryGap="30%">
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#EDEDEE" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#88898D', fontSize: 10, fontWeight: 700 }} dy={10} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chart.grid} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: chart.axis, fontSize: 10, fontWeight: 700 }} dy={10} />
                   <YAxis hide width={0} />
                   <Tooltip
-                    cursor={{ fill: '#F7F7F7' }}
-                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', padding: '12px 16px' }}
+                    cursor={{ fill: chart.cursor }}
+                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', padding: '12px 16px', backgroundColor: chart.surface, color: chart.text }}
                     formatter={(value: number, name: string) => [
                       formatCompact(value),
                       name === 'ingresos' ? 'Ingresos' : 'Egresos',
                     ]}
-                    labelStyle={{ fontWeight: 700, color: '#53565A', marginBottom: 4 }}
+                    labelStyle={{ fontWeight: 700, color: chart.text, marginBottom: 4 }}
                   />
-                  <Bar dataKey="ingresos" fill="#7A9A01" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="egresos" fill="#D86018" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="ingresos" fill={chart.income} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="egresos" fill={chart.expense} radius={[4, 4, 0, 0]} />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -412,11 +423,11 @@ export function DashboardView({
                   <PieChart>
                     {data.monthExpense === 0 || data.expensePie.every(e => e.value === 0)
                       ? <Pie data={[{ value: 1 }]} cx="50%" cy="50%" innerRadius={80} outerRadius={105} dataKey="value" isAnimationActive={false}>
-                          <Cell fill="#DBDCDE" />
+                          <Cell fill={chart.neutral} />
                         </Pie>
                       : <Pie data={data.expensePie} cx="50%" cy="50%" innerRadius={80} outerRadius={105} paddingAngle={8} dataKey="value">
                           {data.expensePie.map((_, index) => (
-                            <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                            <Cell key={`cell-${index}`} fill={chart.pie[index % chart.pie.length]} />
                           ))}
                         </Pie>
                     }
@@ -434,7 +445,7 @@ export function DashboardView({
                   : data.expensePie.map((entry, index) => (
                     <div key={index} className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: PIE_COLORS[index] }} />
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: chart.pie[index % chart.pie.length] }} />
                         <span className="text-sm font-semibold text-slate-600">{entry.name}</span>
                       </div>
                       <span className="text-sm font-bold text-slate-900">{entry.value}%</span>

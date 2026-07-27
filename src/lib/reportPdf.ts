@@ -74,18 +74,37 @@ const PROJECTION_META: Record<ReportPeriod, { title: string; desc: string }> = {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+/**
+ * Intexa logo mark — the four-square isotipo on its white rounded tile, drawn as
+ * vectors so it stays sharp at any zoom. Geometry mirrors public/favicon.svg
+ * (100×100 viewBox), scaled to `size` mm and anchored at the top-left (x, y).
+ * The white tile is what keeps the dark-grey square legible on the dark header.
+ */
+function brandMark(doc: any, x: number, y: number, size: number) {
+  const u = size / 100; // one favicon.svg unit in mm
+
+  doc.setFillColor(...B.white);
+  doc.roundedRect(x, y, size, size, 22 * u, 22 * u, 'F');
+
+  const squares: [number, number, [number, number, number]][] = [
+    [16, 16, B.accent],    // #D86018
+    [51, 16, B.dark],      // #53565A
+    [16, 51, B.warning],   // #F2A900
+    [51, 51, B.primary],   // #7A9A01
+  ];
+  for (const [sx, sy, color] of squares) {
+    doc.setFillColor(...color);
+    doc.roundedRect(x + sx * u, y + sy * u, 33 * u, 33 * u, 7 * u, 7 * u, 'F');
+  }
+}
+
 function pageHeader(doc: any, subtitle: string, W: number, MARGIN: number) {
   doc.setFillColor(...B.dark);
   doc.rect(0, 0, W, 22, 'F');
 
-  // TODO: replace the placeholder circle with the real logo when available.
-  // Use: doc.addImage(base64OrUrl, 'PNG', MARGIN, 5, 12, 12)
-  // where the last two args are width and height in mm (adjust to match logo proportions).
-  // Then shift the brand-name text x from MARGIN + 12 to MARGIN + 16 (or logo width + gap).
-  doc.setFillColor(...B.primary);
-  doc.circle(MARGIN + 4, 11, 3.5, 'F');
+  brandMark(doc, MARGIN, 6.5, 9);
 
-  // Brand name — adjust x offset once the real logo replaces the circle above
+  // Brand name — starts after the mark (MARGIN + 9) plus a 3mm gap
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
   doc.setTextColor(...B.white);

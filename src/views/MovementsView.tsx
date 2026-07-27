@@ -336,6 +336,7 @@ export function MovementsView({
                     <td className="px-3 sm:px-8 py-3 sm:py-6 text-sm font-semibold text-slate-500 whitespace-nowrap">{tx.date}</td>
                     <td className="px-3 sm:px-8 py-3 sm:py-6 max-w-xs">
                       <p className="text-sm font-bold text-slate-900">{tx.description}</p>
+                      {tx.reference && <p className="text-[10px] font-mono font-bold text-slate-400 mt-0.5 tracking-wider" title="Referencia">{tx.reference}</p>}
                       {tx.detail && <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-2 leading-snug">{tx.detail}</p>}
                     </td>
                     <td className="hidden sm:table-cell px-3 sm:px-8 py-3 sm:py-6">

@@ -44,10 +44,23 @@ export interface CreateProjectionInput {
   amount: number;
 }
 
+export interface ProjectionPeriod {
+  id: string;
+  days: number;
+  label: string;
+  createdAt: string;
+}
+
 export const projectionsService = {
-  getSummary: (days?: 30 | 60 | 90) =>
+  getSummary: (days?: number) =>
     api.get<ProjectionSummary>(`/projections${days ? `?days=${days}` : ''}`),
   create: (body: CreateProjectionInput) =>
     api.post<Transaction>('/projections', { ...body, status: 'Pendiente', source: 'Manual', isProjection: true }),
   simulate: (body: SimulateRequest) => api.post<SimulateResponse>('/projections/simulate', body),
+
+  // Custom projection horizons (shared; managed by ADMINISTRADOR/GESTIÓN).
+  listPeriods: () => api.get<ProjectionPeriod[]>('/projections/periods'),
+  createPeriod: (body: { days: number; label?: string }) =>
+    api.post<ProjectionPeriod>('/projections/periods', body),
+  deletePeriod: (id: string) => api.del<{ message: string }>(`/projections/periods/${id}`),
 };

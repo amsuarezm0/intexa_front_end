@@ -1,15 +1,16 @@
-import { Building2,Plus,TrendingDown,TrendingUp } from 'lucide-react';
+import { Building2,Plus,Trash2,TrendingDown,TrendingUp,X } from 'lucide-react';
 import { motion } from 'motion/react';
-import { useEffect,useState } from 'react';
+import { useCallback,useEffect,useState } from 'react';
 import { Area,AreaChart,CartesianGrid,ResponsiveContainer,Tooltip,XAxis,YAxis } from 'recharts';
 import type { LoggedInUser } from '../App';
 import { ProjectionTable } from '../components/ProjectionTable';
 import { Skeleton,SkeletonCard,SkeletonChart } from '../components/Skeleton';
 import { TransactionDetailDrawer } from '../components/TransactionDetailDrawer';
 import { useSettings } from '../contexts/SettingsContext';
+import { useToast } from '../contexts/ToastContext';
 import { canWriteProjections } from '../lib/roles';
 import { cn } from '../lib/utils';
-import { projectionsService,searchService,transactionsService,type ProjectionAlert,type ProjectionSummary,type SearchDocument,type Transaction } from '../services';
+import { projectionsService,searchService,transactionsService,type ProjectionAlert,type ProjectionPeriod,type ProjectionSummary,type SearchDocument,type Transaction } from '../services';
 
 const FV_FC_RE = /^(FV|FC)-/i;
 
@@ -31,16 +32,34 @@ function searchDocToTransaction(doc: SearchDocument, alert: ProjectionAlert): Tr
   };
 }
 
-const PERIODS = [30, 60, 90] as const;
-type Period = 30 | 60 | 90;
+// Built-in horizons, always shown and not deletable. Managers may add custom
+// ones alongside these.
+const FIXED_PERIODS = [30, 60, 90];
+
+interface PeriodCard {
+  days: number;
+  label: string;
+  fixed: boolean;
+  id?: string;
+}
 
 export function ProjectionsView({ onCreateProjection, user }: { onCreateProjection?: () => void; user?: LoggedInUser | null }) {
-  const [dataMap, setDataMap] = useState<Partial<Record<Period, ProjectionSummary>>>({});
+  const [customPeriods, setCustomPeriods] = useState<ProjectionPeriod[]>([]);
+  const [dataMap, setDataMap] = useState<Record<number, ProjectionSummary>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [chartPeriod, setChartPeriod] = useState<Period>(30);
+  const [chartPeriod, setChartPeriod] = useState<number>(30);
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
   const [txLoading, setTxLoading] = useState(false);
+
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newDays, setNewDays] = useState('');
+  const [newLabel, setNewLabel] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const toast = useToast();
+  const canManage = canWriteProjections(user?.role);
+
   function handleAlertClick(alert: ProjectionAlert) {
     setSelectedTx(null);
     setTxLoading(true);
@@ -58,22 +77,62 @@ export function ProjectionsView({ onCreateProjection, user }: { onCreateProjecti
     }
   }
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     setIsLoading(true);
     setError('');
-    Promise.all(PERIODS.map(d => projectionsService.getSummary(d).then(r => [d, r] as [Period, ProjectionSummary])))
-      .then(results => {
-        const map: Partial<Record<Period, ProjectionSummary>> = {};
-        results.forEach(([d, r]) => { map[d] = r; });
-        setDataMap(map);
-      })
-      .catch((err: any) => setError(err.message ?? 'No se pudo cargar las proyecciones.'))
-      .finally(() => setIsLoading(false));
+    try {
+      const custom = await projectionsService.listPeriods();
+      setCustomPeriods(custom);
+      const days = Array.from(new Set([...FIXED_PERIODS, ...custom.map(p => p.days)]));
+      const results = await Promise.all(
+        days.map(d => projectionsService.getSummary(d).then(r => [d, r] as [number, ProjectionSummary])),
+      );
+      const map: Record<number, ProjectionSummary> = {};
+      results.forEach(([d, r]) => { map[d] = r; });
+      setDataMap(map);
+    } catch (err: any) {
+      setError(err.message ?? 'No se pudo cargar las proyecciones.');
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   const { formatCurrency, formatCompact } = useSettings();
 
-  const periodAlerts = dataMap[chartPeriod]?.alerts ?? [];
+  async function handleAddPeriod() {
+    const days = parseInt(newDays, 10);
+    if (!days || days < 1 || days > 3650) {
+      toast.error('Ingrese un número de días entre 1 y 3650.');
+      return;
+    }
+    setSaving(true);
+    try {
+      await projectionsService.createPeriod({ days, label: newLabel.trim() });
+      setNewDays(''); setNewLabel(''); setShowAddForm(false);
+      toast.success('Período agregado.');
+      await load();
+      setChartPeriod(days);
+    } catch (err: any) {
+      toast.error(err.message ?? 'No se pudo agregar el período.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDeletePeriod(card: PeriodCard, e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!card.id) return;
+    try {
+      await projectionsService.deletePeriod(card.id);
+      if (chartPeriod === card.days) setChartPeriod(30);
+      toast.success('Período eliminado.');
+      await load();
+    } catch (err: any) {
+      toast.error(err.message ?? 'No se pudo eliminar el período.');
+    }
+  }
 
   if (error) return <div className="p-8 text-brand-danger font-semibold">{error}</div>;
   if (isLoading || !dataMap[30]) {
@@ -86,6 +145,12 @@ export function ProjectionsView({ onCreateProjection, user }: { onCreateProjecti
     );
   }
 
+  const periodCards: PeriodCard[] = [
+    ...FIXED_PERIODS.map(d => ({ days: d, label: '', fixed: true })),
+    ...customPeriods.map(p => ({ days: p.days, label: p.label, fixed: false, id: p.id })),
+  ].sort((a, b) => a.days - b.days);
+
+  const periodAlerts = dataMap[chartPeriod]?.alerts ?? [];
   const chartData = dataMap[chartPeriod]?.chartData ?? [];
 
   return (
@@ -96,7 +161,7 @@ export function ProjectionsView({ onCreateProjection, user }: { onCreateProjecti
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Proyecciones Financieras</h1>
           <p className="text-slate-500 font-medium tracking-tight">Análisis predictivo de flujo de caja para la toma de decisiones estratégicas.</p>
         </div>
-        {canWriteProjections(user?.role) && (
+        {canManage && (
           <button
             onClick={onCreateProjection}
             className="flex items-center gap-2 bg-brand-warning text-white px-5 py-2.5 rounded-xl font-bold hover:bg-brand-accent transition-colors shadow-lg shadow-brand-warning/20 text-sm"
@@ -106,33 +171,56 @@ export function ProjectionsView({ onCreateProjection, user }: { onCreateProjecti
         )}
       </div>
 
-      {/* Comparison cards — all 3 periods always visible */}
+      {/* Comparison cards — fixed periods + custom, plus an add tile for managers */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {PERIODS.map(d => {
-          const p = dataMap[d];
-          const isActive = d === chartPeriod;
+        {periodCards.map(card => {
+          const p = dataMap[card.days];
+          const isActive = card.days === chartPeriod;
           return (
-            <button
-              key={d}
-              onClick={() => setChartPeriod(d)}
+            <div
+              key={card.days}
+              role="button"
+              tabIndex={0}
+              onClick={() => setChartPeriod(card.days)}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setChartPeriod(card.days); } }}
               className={cn(
-                "text-left p-5 sm:p-8 rounded-3xl sm:rounded-[40px] border transition-all group",
+                "text-left p-5 sm:p-8 rounded-3xl sm:rounded-[40px] border transition-all group cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40",
                 isActive
                   ? "bg-brand-dark border-brand-dark shadow-2xl shadow-brand-dark/20"
                   : "bg-white border-slate-100 card-shadow hover:border-slate-200"
               )}
             >
               <div className="flex justify-between items-start mb-6">
-                <span className={cn(
-                  "text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border",
-                  isActive
-                    ? "text-white/70 border-white/20 bg-white/10"
-                    : "text-slate-400 border-slate-200 bg-slate-50"
-                )}>{d} DÍAS</span>
-                <div className={cn(
-                  "w-2.5 h-2.5 rounded-full transition-all",
-                  isActive ? "bg-white scale-125" : "bg-slate-200 group-hover:bg-brand-primary/40"
-                )} />
+                <div className="flex flex-col gap-1.5 min-w-0">
+                  <span className={cn(
+                    "text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border self-start",
+                    isActive
+                      ? "text-white/70 border-white/20 bg-white/10"
+                      : "text-slate-400 border-slate-200 bg-slate-50"
+                  )}>{card.days} DÍAS</span>
+                  {card.label && (
+                    <span className={cn("text-xs font-bold tracking-tight truncate", isActive ? "text-white" : "text-slate-600")} title={card.label}>
+                      {card.label}
+                    </span>
+                  )}
+                </div>
+                {!card.fixed && canManage ? (
+                  <button
+                    onClick={e => handleDeletePeriod(card, e)}
+                    title="Eliminar período"
+                    className={cn(
+                      "p-1.5 rounded-lg transition-colors shrink-0",
+                      isActive ? "text-white/50 hover:text-white hover:bg-white/10" : "text-slate-300 hover:text-brand-danger hover:bg-brand-danger/10"
+                    )}
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                ) : (
+                  <div className={cn(
+                    "w-2.5 h-2.5 rounded-full transition-all shrink-0",
+                    isActive ? "bg-white scale-125" : "bg-slate-200 group-hover:bg-brand-primary/40"
+                  )} />
+                )}
               </div>
 
               <div className="space-y-5">
@@ -168,9 +256,57 @@ export function ProjectionsView({ onCreateProjection, user }: { onCreateProjecti
                   </div>
                 </div>
               </div>
-            </button>
+            </div>
           );
         })}
+
+        {/* Add-period tile (managers only) */}
+        {canManage && (
+          <div className="p-5 sm:p-8 rounded-3xl sm:rounded-[40px] border-2 border-dashed border-slate-200 flex flex-col justify-center min-h-[220px]">
+            {showAddForm ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nuevo período</p>
+                  <button onClick={() => { setShowAddForm(false); setNewDays(''); setNewLabel(''); }} className="text-slate-300 hover:text-slate-500"><X size={16} /></button>
+                </div>
+                <input
+                  type="number"
+                  min={1}
+                  max={3650}
+                  value={newDays}
+                  onChange={e => setNewDays(e.target.value)}
+                  placeholder="Días (ej. 120)"
+                  autoFocus
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:border-brand-primary transition-all"
+                />
+                <input
+                  type="text"
+                  value={newLabel}
+                  onChange={e => setNewLabel(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleAddPeriod(); }}
+                  placeholder="Etiqueta (opcional)"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:border-brand-primary transition-all"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleAddPeriod}
+                    disabled={saving}
+                    className="flex-1 bg-brand-primary text-white py-2.5 rounded-xl font-bold text-sm hover:bg-brand-accent transition-colors disabled:opacity-60"
+                  >
+                    {saving ? 'Guardando...' : 'Guardar'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setShowAddForm(true)} className="flex flex-col items-center justify-center gap-3 text-slate-400 hover:text-brand-primary transition-colors h-full w-full py-6">
+                <div className="w-12 h-12 rounded-2xl border-2 border-dashed border-current flex items-center justify-center">
+                  <Plus size={22} />
+                </div>
+                <span className="text-sm font-bold">Agregar período</span>
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Chart — driven by the selected period card */}

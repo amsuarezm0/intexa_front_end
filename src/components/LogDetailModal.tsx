@@ -1,5 +1,6 @@
 import { X } from 'lucide-react';
 import { motion } from 'motion/react';
+import { dialogProps,useModal } from '../hooks/useModal';
 import type { ActivityLog } from '../services';
 
 interface Props {
@@ -9,20 +10,25 @@ interface Props {
 }
 
 export function LogDetailModal({ log, locale, onClose }: Props) {
+  const panelRef = useModal({ onClose });
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4"
       onClick={onClose}
     >
       <motion.div
+        ref={panelRef}
+        {...dialogProps}
+        aria-labelledby="log-detail-title"
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         onClick={e => e.stopPropagation()}
-        className="bg-white rounded-3xl sm:rounded-[40px] p-6 sm:p-10 w-full max-w-sm shadow-2xl space-y-8 max-h-[90dvh] overflow-y-auto"
+        className="bg-white rounded-3xl sm:rounded-[40px] p-6 sm:p-10 w-full max-w-sm shadow-2xl space-y-8 max-h-[90dvh] overflow-y-auto outline-none"
       >
         <div className="flex items-center justify-between">
-          <h3 className="text-xl font-black text-slate-900 tracking-tight">Detalle del Log</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 transition-colors">
+          <h3 id="log-detail-title" className="text-xl font-black text-slate-900 tracking-tight">Detalle del Log</h3>
+          <button onClick={onClose} aria-label="Cerrar" className="text-slate-400 hover:text-slate-700 transition-colors">
             <X size={22} />
           </button>
         </div>

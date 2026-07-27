@@ -3,7 +3,10 @@ import { AnimatePresence,motion } from 'motion/react';
 import { useEffect,useState } from 'react';
 import { useToast } from '../contexts/ToastContext';
 import { useSettings } from '../contexts/SettingsContext';
+import { dialogProps,useModal } from '../hooks/useModal';
+import { parseMoney } from '../lib/money';
 import { cn } from '../lib/utils';
+import { CurrencyInput } from './CurrencyInput';
 import { categoriesService,type Category,type Transaction,transactionsService } from '../services';
 import { CategoryBadge } from './CategoryBadge';
 import { StatusBadge } from './StatusBadge';
@@ -18,7 +21,7 @@ interface Props {
 }
 
 export function TransactionDetailDrawer({ transaction, isLoading, onClose, onDeleted, onUpdated, canWrite = true }: Props) {
-  const { formatCurrency } = useSettings();
+  const { formatCurrency, locale } = useSettings();
   const toast = useToast();
   const [showConfirm, setShowConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -36,6 +39,11 @@ export function TransactionDetailDrawer({ transaction, isLoading, onClose, onDel
 
   const open = !!(transaction || isLoading);
   const canEdit = transaction && transaction.source !== 'Siigo' && canWrite;
+
+  // Two overlays: the drawer, and the delete confirmation stacked on top of it.
+  // Escape unwinds them one at a time, innermost first.
+  const panelRef = useModal<HTMLDivElement>({ onClose, active: open });
+  const confirmRef = useModal<HTMLDivElement>({ onClose: () => setShowConfirm(false), active: showConfirm });
 
   useEffect(() => {
     if (editing) {
@@ -62,12 +70,17 @@ export function TransactionDetailDrawer({ transaction, isLoading, onClose, onDel
 
   async function handleSave() {
     if (!transaction) return;
+    const amount = parseMoney(editAmount, locale);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error('Ingrese un monto válido mayor a cero.');
+      return;
+    }
     setSaving(true);
     try {
       const updated = await transactionsService.update(transaction.id, {
         type: editType,
         date: editDate,
-        amount: parseFloat(editAmount.replace(/,/g, '.')),
+        amount,
         description: editDescription,
         category: editCategory,
         status: editStatus,
@@ -113,11 +126,14 @@ export function TransactionDetailDrawer({ transaction, isLoading, onClose, onDel
             onClick={onClose}
           />
           <motion.div
+            ref={panelRef}
+            {...dialogProps}
+            aria-label="Detalle del movimiento"
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 28, stiffness: 260 }}
-            className="fixed top-0 right-0 h-full w-full max-w-md z-50 bg-white shadow-2xl flex flex-col"
+            className="fixed top-0 right-0 h-full w-full max-w-md z-50 bg-white shadow-2xl flex flex-col outline-none"
           >
             {isLoading ? (
               <div className="flex-1 flex items-center justify-center">
@@ -194,10 +210,10 @@ export function TransactionDetailDrawer({ transaction, isLoading, onClose, onDel
                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Monto</p>
                           <div className="relative">
                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">$</span>
-                            <input
-                              type="text"
+                            <CurrencyInput
                               value={editAmount}
-                              onChange={e => setEditAmount(e.target.value)}
+                              onChange={setEditAmount}
+                              aria-label="Monto"
                               className={cn(inputCls, "pl-8 text-right")}
                             />
                           </div>
@@ -359,11 +375,14 @@ export function TransactionDetailDrawer({ transaction, isLoading, onClose, onDel
                 onClick={() => setShowConfirm(false)}
               >
                 <motion.div
+                  ref={confirmRef}
+                  {...dialogProps}
+                  aria-label="Confirmar eliminación"
                   initial={{ scale: 0.95, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 0.95, opacity: 0 }}
                   transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                  className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-sm space-y-4"
+                  className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-sm space-y-4 outline-none"
                   onClick={e => e.stopPropagation()}
                 >
                   <div className="w-12 h-12 rounded-2xl bg-brand-danger/10 flex items-center justify-center">

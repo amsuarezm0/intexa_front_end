@@ -1,6 +1,7 @@
 import { ChevronDown, Eye, EyeOff, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useState } from 'react';
+import { dialogProps,useModal } from '../hooks/useModal';
 import { roleLabel } from '../lib/roles';
 import { hashPassword } from '../lib/utils';
 import { usersService, type User } from '../services';
@@ -44,6 +45,7 @@ export function UserFormModal(props: Props) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const panelRef = useModal({ onClose: props.onClose });
 
   const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm(f => ({ ...f, [field]: e.target.value }));
@@ -90,14 +92,17 @@ export function UserFormModal(props: Props) {
       onClick={props.onClose}
     >
       <motion.div
+        ref={panelRef}
+        {...dialogProps}
+        aria-labelledby="user-form-title"
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         onClick={e => e.stopPropagation()}
-        className="bg-white rounded-3xl sm:rounded-[40px] p-6 sm:p-10 w-full max-w-md shadow-2xl space-y-6 sm:space-y-8 max-h-[90dvh] overflow-y-auto"
+        className="bg-white rounded-3xl sm:rounded-[40px] p-6 sm:p-10 w-full max-w-md shadow-2xl space-y-6 sm:space-y-8 max-h-[90dvh] overflow-y-auto outline-none"
       >
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+            <h3 id="user-form-title" className="text-2xl font-black text-slate-900 tracking-tight">
               {isEdit ? 'Editar Usuario' : 'Nuevo Usuario'}
             </h3>
             {isEdit && (

@@ -1,6 +1,10 @@
 import { Landmark, Plus, Trash2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useState } from 'react';
+import { useSettings } from '../contexts/SettingsContext';
+import { dialogProps,useModal } from '../hooks/useModal';
+import { parseMoney } from '../lib/money';
+import { CurrencyInput } from './CurrencyInput';
 import type { BankAccount } from '../services';
 
 interface Props {
@@ -25,9 +29,13 @@ function toRows(accounts?: BankAccount[]): Row[] {
 export function BankSaldoModal({ initialAccounts, onConfirm, onSkip }: Props) {
   const [rows, setRows] = useState<Row[]>(() => toRows(initialAccounts));
   const [error, setError] = useState('');
+  // Escape dismisses the prompt the same way "Omitir" does — it is a reminder,
+  // not a blocking step.
+  const panelRef = useModal({ onClose: onSkip });
+  const { locale } = useSettings();
 
   const total = rows.reduce((sum, r) => {
-    const n = parseFloat(r.amount.replace(/,/g, '.'));
+    const n = parseMoney(r.amount, locale);
     return sum + (isNaN(n) ? 0 : n);
   }, 0);
 
@@ -48,7 +56,7 @@ export function BankSaldoModal({ initialAccounts, onConfirm, onSkip }: Props) {
     const accounts: BankAccount[] = [];
     for (const r of rows) {
       const label = r.label.trim();
-      const amount = parseFloat(r.amount.replace(/,/g, '.'));
+      const amount = parseMoney(r.amount, locale);
       // Skip fully-empty rows so a stray blank line doesn't block saving.
       if (!label && !r.amount.trim()) continue;
       if (!label) {
@@ -71,16 +79,19 @@ export function BankSaldoModal({ initialAccounts, onConfirm, onSkip }: Props) {
   return (
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
       <motion.div
+        ref={panelRef}
+        {...dialogProps}
+        aria-labelledby="bank-saldo-title"
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 w-full max-w-lg max-h-[90dvh] overflow-y-auto"
+        className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 w-full max-w-lg max-h-[90dvh] overflow-y-auto outline-none"
       >
         <div className="flex items-center gap-3 mb-2">
           <div className="p-2.5 rounded-xl bg-brand-primary/10 text-brand-primary">
             <Landmark size={22} />
           </div>
-          <h2 className="text-xl font-bold text-slate-900">Actualizar Saldo Bancario</h2>
+          <h2 id="bank-saldo-title" className="text-xl font-bold text-slate-900">Actualizar Saldo Bancario</h2>
         </div>
         <p className="text-sm text-slate-500 mb-6 ml-[52px]">
           Especifica el saldo actual de cada banco.
@@ -101,13 +112,11 @@ export function BankSaldoModal({ initialAccounts, onConfirm, onSkip }: Props) {
                 onChange={e => setRow(i, { label: e.target.value })}
                 className="flex-1 px-3 py-2.5 border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-brand-primary/50 focus:ring-2 focus:ring-brand-primary/10 transition-all"
               />
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="15000000"
+              <CurrencyInput
+                placeholder="15.000.000"
+                aria-label={row.label ? `Saldo de ${row.label}` : 'Saldo del banco'}
                 value={row.amount}
-                onChange={e => setRow(i, { amount: e.target.value })}
+                onChange={v => setRow(i, { amount: v })}
                 onKeyDown={e => e.key === 'Enter' && handleConfirm()}
                 className="w-36 px-3 py-2.5 border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-brand-primary/50 focus:ring-2 focus:ring-brand-primary/10 transition-all"
               />

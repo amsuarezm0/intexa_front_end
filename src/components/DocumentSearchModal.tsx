@@ -1,6 +1,7 @@
 import { X, Search, Loader2, FileText, ArrowDownCircle, ArrowUpCircle, Receipt, ShoppingCart } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
+import { dialogProps,useModal } from '../hooks/useModal';
 import { searchService, type SearchDocument } from '../services';
 import { StatusBadge } from './StatusBadge';
 import { cn } from '../lib/utils';
@@ -32,6 +33,8 @@ export function DocumentSearchModal({ initialQuery = '', onClose }: Props) {
   const [searched, setSearched] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { formatCurrency } = useSettings();
+  // autoFocus off: the search input below claims focus on open.
+  const panelRef = useModal({ onClose, autoFocus: false });
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -61,7 +64,12 @@ export function DocumentSearchModal({ initialQuery = '', onClose }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl h-[85dvh] sm:h-auto sm:max-h-[85dvh] flex flex-col overflow-hidden">
+      <div
+        ref={panelRef}
+        {...dialogProps}
+        aria-label="Buscar documentos"
+        className="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl h-[85dvh] sm:h-auto sm:max-h-[85dvh] flex flex-col overflow-hidden outline-none"
+      >
 
         {/* Search bar */}
         <div className="p-5 border-b border-slate-100 flex items-center gap-3">

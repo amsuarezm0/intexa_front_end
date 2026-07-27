@@ -1,4 +1,5 @@
 import { AlertTriangle, CheckCircle2, Lightbulb, X } from 'lucide-react';
+import { dialogProps,useModal } from '../hooks/useModal';
 import type { SiigoSyncResult } from '../services/siigo';
 import { cn } from '../lib/utils';
 
@@ -8,6 +9,7 @@ interface SyncResultModalProps {
 }
 
 export function SyncResultModal({ result, onClose }: SyncResultModalProps) {
+  const panelRef = useModal({ onClose });
   const hasErrors = (result.errors?.length ?? 0) > 0;
   const totalNew = result.invoicesImported + result.purchasesImported + result.vouchersImported + result.paymentReceiptsImported;
 
@@ -19,8 +21,14 @@ export function SyncResultModal({ result, onClose }: SyncResultModalProps) {
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md max-h-[90dvh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={onClose}>
+      <div
+        ref={panelRef}
+        {...dialogProps}
+        aria-labelledby="sync-result-title"
+        onClick={e => e.stopPropagation()}
+        className="bg-white rounded-3xl shadow-2xl w-full max-w-md max-h-[90dvh] overflow-y-auto outline-none"
+      >
 
         {/* Header */}
         <div className={cn('px-6 py-5 flex items-start justify-between gap-4', hasErrors ? 'bg-brand-warning/10' : 'bg-brand-success/10')}>
@@ -29,13 +37,13 @@ export function SyncResultModal({ result, onClose }: SyncResultModalProps) {
               ? <AlertTriangle size={22} className="text-brand-warning shrink-0 mt-0.5" />
               : <CheckCircle2 size={22} className="text-brand-success shrink-0 mt-0.5" />}
             <div>
-              <h2 className="font-black text-slate-900 text-base leading-tight">
+              <h2 id="sync-result-title" className="font-black text-slate-900 text-base leading-tight">
                 {hasErrors ? 'Sincronización parcial' : 'Sincronización completada'}
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">{result.dateStart} → {result.dateEnd}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-black/5 transition-colors shrink-0">
+          <button onClick={onClose} aria-label="Cerrar" className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-black/5 transition-colors shrink-0">
             <X size={16} />
           </button>
         </div>

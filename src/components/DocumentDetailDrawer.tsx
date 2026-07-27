@@ -1,6 +1,7 @@
 import { ArrowDownLeft,ArrowUpRight,Calendar,Database,Hash,Tag,User,X } from 'lucide-react';
 import { AnimatePresence,motion } from 'motion/react';
 import { useSettings } from '../contexts/SettingsContext';
+import { dialogProps,useModal } from '../hooks/useModal';
 import { cn } from '../lib/utils';
 import type { PeriodInvoice,PeriodPurchase } from '../services/cashflow';
 import { CategoryBadge } from './CategoryBadge';
@@ -29,6 +30,7 @@ export function DocumentDetailDrawer({ doc, onClose }: Props) {
   const { formatCurrency } = useSettings();
   const open = !!doc;
   const isInvoice = doc?.docType === 'FV';
+  const panelRef = useModal<HTMLDivElement>({ onClose, active: open });
 
   return (
     <AnimatePresence>
@@ -42,11 +44,14 @@ export function DocumentDetailDrawer({ doc, onClose }: Props) {
             onClick={onClose}
           />
           <motion.div
+            ref={panelRef}
+            {...dialogProps}
+            aria-label={isInvoice ? 'Detalle de factura de venta' : 'Detalle de factura de compra'}
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 28, stiffness: 260 }}
-            className="fixed top-0 right-0 h-full w-full max-w-md z-50 bg-white shadow-2xl flex flex-col"
+            className="fixed top-0 right-0 h-full w-full max-w-md z-50 bg-white shadow-2xl flex flex-col outline-none"
           >
             {/* Header */}
             <div className={cn(

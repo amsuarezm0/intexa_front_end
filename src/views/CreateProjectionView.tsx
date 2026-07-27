@@ -16,6 +16,29 @@ interface CreateProjectionViewProps {
   onSave: () => void;
 }
 
+// Built-in horizons, mirroring ProjectionsView. Managers may add custom ones,
+// which extend how far out a projection can be dated.
+const FIXED_PERIODS = [30, 60, 90];
+
+/** Days from today to a `YYYY-MM-DD` string, parsed in local time so the count
+ *  doesn't shift by one near midnight (`new Date(str)` would parse it as UTC). */
+function daysFromToday(dateStr: string): number {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const target = new Date(y, m - 1, d);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.round((target.getTime() - today.getTime()) / 86_400_000);
+}
+
+/** `YYYY-MM-DD` for a date `offsetDays` from today, in local time — `toISOString()`
+ *  would return the UTC day and shift the bound in negative offsets like COT. */
+function localDateInput(offsetDays: number): string {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + offsetDays);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export function CreateProjectionView({ onBack, onSave }: CreateProjectionViewProps) {
   const [type, setType] = useState<'Ingreso' | 'Egreso'>('Ingreso');
   const [date, setDate] = useState('');
@@ -23,6 +46,7 @@ export function CreateProjectionView({ onBack, onSave }: CreateProjectionViewPro
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
+  const [periods, setPeriods] = useState<number[]>(FIXED_PERIODS);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -32,27 +56,33 @@ export function CreateProjectionView({ onBack, onSave }: CreateProjectionViewPro
     categoriesService.list()
       .then(cats => { setCategories(cats); if (cats.length > 0) setCategory(cats[0].name); })
       .catch(() => {});
+    projectionsService.listPeriods()
+      .then(custom => setPeriods([...new Set([...FIXED_PERIODS, ...custom.map(p => p.days)])].sort((a, b) => a - b)))
+      .catch(() => {});
   }, []);
 
   const amountNum = parseFloat(amount.replace(/,/g, '.')) || 0;
 
-  const daysUntil = date
-    ? Math.max(0, Math.round((new Date(date).getTime() - Date.now()) / 86_400_000))
-    : null;
+  // A projection is only visible inside a horizon that reaches its date, so the
+  // longest configured period is the effective limit.
+  const maxDays = periods[periods.length - 1];
+
+  const daysUntil = date ? daysFromToday(date) : null;
 
   const horizon = daysUntil === null ? null
-    : daysUntil <= 30 ? 30
-    : daysUntil <= 60 ? 60
-    : daysUntil <= 90 ? 90
-    : null;
+    : periods.find(d => daysUntil <= d) ?? null;
 
   const handleSave = async () => {
     if (!date || !amount || !description) {
       setError('Por favor complete todos los campos requeridos.');
       return;
     }
-    if (daysUntil !== null && daysUntil > 90) {
-      setError('La fecha esperada debe estar dentro de los próximos 90 días.');
+    if (daysUntil !== null && daysUntil < 0) {
+      setError('La fecha esperada no puede estar en el pasado.');
+      return;
+    }
+    if (daysUntil !== null && daysUntil > maxDays) {
+      setError(`La fecha esperada debe estar dentro de los próximos ${maxDays} días.`);
       return;
     }
     setError('');
@@ -122,16 +152,19 @@ export function CreateProjectionView({ onBack, onSave }: CreateProjectionViewPro
                   <input
                     type="date"
                     value={date}
-                    min={new Date().toISOString().split('T')[0]}
+                    min={localDateInput(0)}
+                    max={localDateInput(maxDays)}
                     onChange={e => setDate(e.target.value)}
                     className="w-full pl-5 pr-12 py-5 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-700 outline-none focus:border-brand-primary transition-all"
                   />
                   <CalendarIcon className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={20} />
                 </div>
                 {daysUntil !== null && (
-                  <p className={cn("text-xs font-bold pl-1", daysUntil > 90 ? "text-brand-danger" : "text-slate-400")}>
-                    {daysUntil === 0 ? 'Hoy' : `En ${daysUntil} día${daysUntil !== 1 ? 's' : ''}`}
-                    {daysUntil > 90 && ' — fuera del horizonte de 90 días'}
+                  <p className={cn("text-xs font-bold pl-1", daysUntil < 0 || daysUntil > maxDays ? "text-brand-danger" : "text-slate-400")}>
+                    {daysUntil < 0
+                      ? `Hace ${-daysUntil} día${daysUntil !== -1 ? 's' : ''} — la fecha está en el pasado`
+                      : daysUntil === 0 ? 'Hoy' : `En ${daysUntil} día${daysUntil !== 1 ? 's' : ''}`}
+                    {daysUntil > maxDays && ` — fuera del horizonte de ${maxDays} días`}
                   </p>
                 )}
               </div>
@@ -196,7 +229,7 @@ export function CreateProjectionView({ onBack, onSave }: CreateProjectionViewPro
           <div className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[48px] border border-slate-100 card-shadow space-y-8">
             <h3 className="text-lg font-black text-slate-900 tracking-tight">Impacto en Horizonte</h3>
             <div className="space-y-4">
-              {([30, 60, 90] as const).map(d => {
+              {periods.map(d => {
                 const inWindow = horizon !== null && d >= horizon;
                 return (
                   <div key={d} className={cn(

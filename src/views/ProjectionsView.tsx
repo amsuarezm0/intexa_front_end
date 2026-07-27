@@ -8,7 +8,7 @@ import { Skeleton,SkeletonCard,SkeletonChart } from '../components/Skeleton';
 import { TransactionDetailDrawer } from '../components/TransactionDetailDrawer';
 import { useSettings } from '../contexts/SettingsContext';
 import { useToast } from '../contexts/ToastContext';
-import { canWriteProjections } from '../lib/roles';
+import { canWrite,canWriteProjections } from '../lib/roles';
 import { cn } from '../lib/utils';
 import { projectionsService,searchService,transactionsService,type ProjectionAlert,type ProjectionPeriod,type ProjectionSummary,type SearchDocument,type Transaction } from '../services';
 
@@ -77,9 +77,13 @@ export function ProjectionsView({ onCreateProjection, user }: { onCreateProjecti
     }
   }
 
-  const load = useCallback(async () => {
-    setIsLoading(true);
-    setError('');
+  // `silent` refreshes in place after a mutation: no skeleton flash, and a
+  // failure keeps the current data on screen instead of blanking the view.
+  const load = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) {
+      setIsLoading(true);
+      setError('');
+    }
     try {
       const custom = await projectionsService.listPeriods();
       setCustomPeriods(custom);
@@ -91,13 +95,19 @@ export function ProjectionsView({ onCreateProjection, user }: { onCreateProjecti
       results.forEach(([d, r]) => { map[d] = r; });
       setDataMap(map);
     } catch (err: any) {
+      if (silent) throw err;
       setError(err.message ?? 'No se pudo cargar las proyecciones.');
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  function refresh() {
+    load({ silent: true }).catch((err: any) =>
+      toast.error(err.message ?? 'No se pudo actualizar las proyecciones.'));
+  }
 
   const { formatCurrency, formatCompact } = useSettings();
 
@@ -363,6 +373,9 @@ export function ProjectionsView({ onCreateProjection, user }: { onCreateProjecti
       transaction={selectedTx}
       isLoading={txLoading}
       onClose={() => { setSelectedTx(null); setTxLoading(false); }}
+      onDeleted={() => { setSelectedTx(null); refresh(); }}
+      onUpdated={tx => { setSelectedTx(tx); refresh(); }}
+      canWrite={canWrite(user?.role)}
     />
     </>
   );

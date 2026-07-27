@@ -1,4 +1,4 @@
-import { PublicClientApplication,type AuthenticationResult,type Configuration } from '@azure/msal-browser';
+import type { AuthenticationResult,Configuration,PublicClientApplication } from '@azure/msal-browser';
 
 const msalConfig: Configuration = {
   auth: {
@@ -14,12 +14,21 @@ const msalConfig: Configuration = {
 
 let _instance: PublicClientApplication | null = null;
 
+/** The library is ~200 kB and only two paths need it — clicking the Microsoft
+ *  button, and landing back from its redirect — so it is fetched at that point
+ *  rather than on every page load. */
 async function getInstance(): Promise<PublicClientApplication> {
   if (!_instance) {
+    const { PublicClientApplication } = await import('@azure/msal-browser');
     _instance = new PublicClientApplication(msalConfig);
     await _instance.initialize();
   }
   return _instance;
+}
+
+/** True when the current URL carries a Microsoft redirect response. */
+export function hasRedirectResponse(): boolean {
+  return /(?:code|state|error|session_state)=/.test(window.location.hash + window.location.search);
 }
 
 /**
@@ -38,8 +47,12 @@ export async function signInWithMicrosoft(): Promise<void> {
 /**
  * Call once on app startup. If the user just came back from a Microsoft
  * redirect, returns the auth result; otherwise returns null.
+ *
+ * Returns early on an ordinary load: with no redirect response in the URL there
+ * is nothing to complete, and skipping keeps MSAL out of the normal startup.
  */
 export async function completeMicrosoftRedirect(): Promise<AuthenticationResult | null> {
+  if (!hasRedirectResponse()) return null;
   const instance = await getInstance();
   return instance.handleRedirectPromise();
 }

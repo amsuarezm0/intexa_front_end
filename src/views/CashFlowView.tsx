@@ -2,11 +2,14 @@ import { AlertTriangle,ArrowDownCircle,ArrowDownLeft,ArrowUpRight,ChevronLeft,Ch
 import { Pagination } from '../components/Pagination';
 import { motion } from 'motion/react';
 import { TransactionFilters, type TxFilters } from '../components/TransactionFilters';
-import { useEffect,useMemo,useState } from 'react';
+import { useCallback,useEffect,useMemo,useState } from 'react';
+import { EmptyState } from '../components/EmptyState';
+import { ErrorState } from '../components/ErrorState';
 import { Skeleton,SkeletonCard } from '../components/Skeleton';
 import { StatusBadge } from '../components/StatusBadge';
 import { TransactionDetailDrawer } from '../components/TransactionDetailDrawer';
 import { useSettings } from '../contexts/SettingsContext';
+import { toInt,useQueryState } from '../hooks/useQueryState';
 import { canWrite, canWriteProjections } from '../lib/roles';
 import { cn } from '../lib/utils';
 import { cashFlowService,projectionsService,type CashFlowSummary,type PeriodData,type PeriodInvoice,type PeriodPurchase } from '../services';
@@ -206,29 +209,54 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
   const [isLoading, setIsLoading] = useState(true);
   const [chartLoading, setChartLoading] = useState(false);
   const [error, setError] = useState('');
-  const [period, setPeriod] = useState<Period>('week');
-  const [currentDate, setCurrentDate] = useState(() => new Date());
+  // Period, the date being viewed and the movement filters live in the URL, so
+  // "mira el flujo de esta semana" is a link rather than a list of clicks.
+  const [query, setQuery] = useQueryState({
+    period: 'week', date: '', type: '', status: '', source: '', record: '', page: '1',
+  });
+  const period = (['day', 'week', 'month'] as const).includes(query.period as Period)
+    ? query.period as Period
+    : 'week';
+  const currentDate = useMemo(() => {
+    const parsed = query.date ? new Date(`${query.date}T00:00:00`) : null;
+    return parsed && !isNaN(parsed.getTime()) ? parsed : new Date();
+  }, [query.date]);
+  const txPage = toInt(query.page, 1);
 
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState<TxFilters>({ type: '', status: '', source: '', record: '' });
-  const [txPage, setTxPage] = useState(1);
+  const filters = useMemo<TxFilters>(() => ({
+    type:   query.type   as TxFilters['type'],
+    status: query.status as TxFilters['status'],
+    source: query.source as TxFilters['source'],
+    record: query.record as TxFilters['record'],
+  }), [query]);
   const TX_PAGE_SIZE = 10;
   const { type: filterType, status: filterStatus, source: filterSource, record: filterRecord } = filters;
   const [selectedTx, setSelectedTx]   = useState<Transaction | null>(null);
   const [selectedDoc, setSelectedDoc] = useState<RawDoc | null>(null);
 
-  // Initial load: summary + projections
-  useEffect(() => {
-    Promise.all([
-      cashFlowService.getSummary(),
-      projectionsService.getSummary(30),
-    ]).then(([s, p30]) => {
+  // Initial load: summary + projections. `silent` re-reads after a mutation
+  // without collapsing the page into skeletons.
+  const load = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) {
+      setIsLoading(true);
+      setError('');
+    }
+    try {
+      const [s, p30] = await Promise.all([
+        cashFlowService.getSummary(),
+        projectionsService.getSummary(30),
+      ]);
       setSummary(prev => ({ ...prev, ...(s ?? {}) }));
       setProj30(p30?.estimatedBalance ?? 0);
-    })
-    .catch((err: any) => setError(err.message ?? 'No se pudo cargar el flujo de caja.'))
-    .finally(() => setIsLoading(false));
+    } catch (err: any) {
+      if (!silent) setError(err.message ?? 'No se pudo cargar el flujo de caja.');
+    } finally {
+      if (!silent) setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   // Fetch period data whenever period or date changes
   useEffect(() => {
@@ -297,10 +325,20 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
 
   const todayKey = dateKey(new Date());
 
-  function clearFilters() { setFilters({ type: '', status: '', source: '', record: '' }); setTxPage(1); }
-  function handleFilterChange(next: Partial<TxFilters>) { setFilters(f => ({ ...f, ...next })); setTxPage(1); }
+  function clearFilters() { setQuery({ type: '', status: '', source: '', record: '', page: '1' }); }
+  function handleFilterChange(next: Partial<TxFilters>) {
+    setQuery({
+      ...(next.type   !== undefined && { type:   next.type }),
+      ...(next.status !== undefined && { status: next.status }),
+      ...(next.source !== undefined && { source: next.source }),
+      ...(next.record !== undefined && { record: next.record }),
+      page: '1',
+    });
+  }
+  const setTxPage = (next: number) => setQuery({ page: String(next) });
+  const goToDate = (date: Date) => setQuery({ date: toDateStr(date), page: '1' });
 
-  if (error) return <div className="p-8 text-brand-danger font-semibold">{error}</div>;
+  if (error) return <ErrorState message={error} onRetry={load} />;
   if (isLoading) {
     return <div className="p-8 space-y-8"><Skeleton className="h-10 w-48" /><SkeletonCard /></div>;
   }
@@ -328,7 +366,7 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
           {PERIOD_ORDER.map(p => (
             <button
               key={p}
-              onClick={() => { setPeriod(p); setTxPage(1); }}
+              onClick={() => setQuery({ period: p, page: '1' })}
               className={cn("px-6 py-2 text-xs font-bold rounded-xl transition-all", period === p ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600")}
             >
               {PERIOD_LABELS[p]}
@@ -364,9 +402,9 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
         <div className="bg-white p-4 sm:p-8 rounded-3xl sm:rounded-[40px] border border-slate-100 card-shadow self-start">
           <div className="flex items-center justify-between mb-6 sm:mb-8">
             <div className="flex items-center gap-4">
-              <button onClick={() => { setCurrentDate(d => navDate(d, period, -1)); setTxPage(1); }} className="p-2 hover:bg-slate-50 rounded-xl transition-colors"><ChevronLeft size={20} /></button>
+              <button onClick={() => goToDate(navDate(currentDate, period, -1))} className="p-2 hover:bg-slate-50 rounded-xl transition-colors"><ChevronLeft size={20} /></button>
               <h3 className="text-xl font-bold text-slate-900 tracking-tight">{chartLoading ? '…' : title}</h3>
-              <button onClick={() => { setCurrentDate(d => navDate(d, period, 1)); setTxPage(1); }} className="p-2 hover:bg-slate-50 rounded-xl transition-colors"><ChevronRight size={20} /></button>
+              <button onClick={() => goToDate(navDate(currentDate, period, 1))} className="p-2 hover:bg-slate-50 rounded-xl transition-colors"><ChevronRight size={20} /></button>
             </div>
             <div className="flex gap-4">
               <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-brand-success" /><span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">INGRESOS</span></div>
@@ -592,8 +630,20 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
             <tbody className="divide-y divide-slate-50">
               {filteredTxs.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-8 py-12 text-sm text-slate-400 font-medium text-center">
-                    {allMovements.length === 0 ? `Sin movimientos en ${title.toLowerCase()}` : 'Ningún movimiento coincide con los filtros aplicados'}
+                  <td colSpan={7}>
+                    {allMovements.length === 0 ? (
+                      <EmptyState
+                        title={`Sin movimientos en ${title.toLowerCase()}`}
+                        hint="Prueba con otro período o navega a una fecha distinta."
+                      />
+                    ) : (
+                      <EmptyState
+                        icon={Filter}
+                        title="Ningún movimiento coincide"
+                        hint={`${allMovements.length} movimiento${allMovements.length === 1 ? '' : 's'} en ${title.toLowerCase()} quedaron fuera por los filtros aplicados.`}
+                        action={{ label: 'Limpiar filtros', onClick: clearFilters }}
+                      />
+                    )}
                   </td>
                 </tr>
               ) : pagedTxs.map(m => (

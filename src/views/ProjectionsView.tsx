@@ -3,11 +3,14 @@ import { motion } from 'motion/react';
 import { useCallback,useEffect,useState } from 'react';
 import { Area,AreaChart,CartesianGrid,ResponsiveContainer,Tooltip,XAxis,YAxis } from 'recharts';
 import type { LoggedInUser } from '../App';
+import { ErrorState } from '../components/ErrorState';
 import { ProjectionTable } from '../components/ProjectionTable';
 import { Skeleton,SkeletonCard,SkeletonChart } from '../components/Skeleton';
 import { TransactionDetailDrawer } from '../components/TransactionDetailDrawer';
 import { useSettings } from '../contexts/SettingsContext';
 import { useToast } from '../contexts/ToastContext';
+import { toInt,useQueryParam } from '../hooks/useQueryState';
+import { useChartTheme } from '../lib/chartTheme';
 import { canWrite,canWriteProjections } from '../lib/roles';
 import { cn } from '../lib/utils';
 import { projectionsService,searchService,transactionsService,type ProjectionAlert,type ProjectionPeriod,type ProjectionSummary,type SearchDocument,type Transaction } from '../services';
@@ -48,7 +51,11 @@ export function ProjectionsView({ onCreateProjection, user }: { onCreateProjecti
   const [dataMap, setDataMap] = useState<Record<number, ProjectionSummary>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [chartPeriod, setChartPeriod] = useState<number>(30);
+  // Which horizon the chart shows travels in the URL, so a shared link opens on
+  // the same one instead of snapping back to 30 días.
+  const [chartPeriodParam, setChartPeriodParam] = useQueryParam('days', '30');
+  const chartPeriod = toInt(chartPeriodParam, 30);
+  const setChartPeriod = (days: number) => setChartPeriodParam(String(days));
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
   const [txLoading, setTxLoading] = useState(false);
 
@@ -110,6 +117,7 @@ export function ProjectionsView({ onCreateProjection, user }: { onCreateProjecti
   }
 
   const { formatCurrency, formatCompact } = useSettings();
+  const chart = useChartTheme();
 
   async function handleAddPeriod() {
     const days = parseInt(newDays, 10);
@@ -144,7 +152,7 @@ export function ProjectionsView({ onCreateProjection, user }: { onCreateProjecti
     }
   }
 
-  if (error) return <div className="p-8 text-brand-danger font-semibold">{error}</div>;
+  if (error) return <ErrorState message={error} onRetry={() => load()} />;
   if (isLoading || !dataMap[30]) {
     return (
       <div className="space-y-8">
@@ -336,19 +344,19 @@ export function ProjectionsView({ onCreateProjection, user }: { onCreateProjecti
             <AreaChart data={chartData}>
               <defs>
                 <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#7A9A01" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#7A9A01" stopOpacity={0} />
+                  <stop offset="5%" stopColor={chart.income} stopOpacity={0.3} />
+                  <stop offset="95%" stopColor={chart.income} stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="colorDeficit" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#D86018" stopOpacity={0.2} />
-                  <stop offset="95%" stopColor="#D86018" stopOpacity={0} />
+                  <stop offset="5%" stopColor={chart.expense} stopOpacity={0.2} />
+                  <stop offset="95%" stopColor={chart.expense} stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#EDEDEE" />
-              <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#88898D' }} dy={10} />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chart.grid} />
+              <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: chart.axis }} dy={10} />
               <YAxis hide />
-              <Tooltip cursor={false} contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }} />
-              <Area type="monotone" dataKey="val" stroke="#7A9A01" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
+              <Tooltip cursor={false} contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', backgroundColor: chart.surface, color: chart.text }} />
+              <Area type="monotone" dataKey="val" stroke={chart.income} strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
               <Area type="monotone" dataKey="deficit" stroke="transparent" fillOpacity={1} fill="url(#colorDeficit)" />
             </AreaChart>
           </ResponsiveContainer>

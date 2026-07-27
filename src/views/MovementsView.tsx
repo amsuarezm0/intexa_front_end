@@ -1,4 +1,3 @@
-import ExcelJS from 'exceljs';
 import {
 ArrowDownLeft,
 ArrowUpRight,
@@ -8,7 +7,9 @@ TrendingDown,
 TrendingUp,
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { useCallback,useEffect,useRef,useState } from 'react';
+import { useCallback,useEffect,useMemo,useRef,useState } from 'react';
+import { EmptyState } from '../components/EmptyState';
+import { ErrorState } from '../components/ErrorState';
 import type { LoggedInUser } from '../App';
 import { CategoryBadge } from '../components/CategoryBadge';
 import { Skeleton,SkeletonCard } from '../components/Skeleton';
@@ -18,12 +19,16 @@ import { TransactionDetailDrawer } from '../components/TransactionDetailDrawer';
 import { TransactionFilters, type TxFilters, type TxTypeFilter, type TxStatusFilter, type TxSourceFilter, type TxRecordFilter } from '../components/TransactionFilters';
 import { useSettings } from '../contexts/SettingsContext';
 import { useToast } from '../contexts/ToastContext';
+import { toInt,useQueryState } from '../hooks/useQueryState';
 import { canWrite } from '../lib/roles';
 import { cn } from '../lib/utils';
 import { transactionsService,type Transaction,type TransactionSummary } from '../services';
 
 
+// ExcelJS is ~1 MB and only ever runs behind the Export button, so it is
+// fetched on the click rather than shipped with the view.
 async function exportXLSX(transactions: Transaction[], formatCurrency: (n: number) => string) {
+  const { default: ExcelJS } = await import('exceljs');
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('Movimientos');
 
@@ -67,24 +72,34 @@ async function exportXLSX(transactions: Transaction[], formatCurrency: (n: numbe
 
 export function MovementsView({
   onCreateMovement,
-  initialSelectedId,
-  initialSearch = '',
   user,
 }: {
   onCreateMovement?: () => void;
-  initialSelectedId?: string;
-  initialSearch?: string;
   user?: LoggedInUser | null;
 }) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [summary, setSummary] = useState<TransactionSummary>({ totalBalance: 0, totalIncome: 0, totalExpense: 0, monthlyIncome: 0, monthlyExpense: 0 });
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState(initialSearch);
-  const [searchInput, setSearchInput] = useState(initialSearch);
-  const [filters, setFilters] = useState<TxFilters>({ type: '', status: '', source: '', record: '', dateFrom: '', dateTo: '' });
+
+  // The list is fully described by the URL: a filtered page — or an open
+  // movement — can be copied out of the address bar and shared as-is.
+  const [query, setQuery] = useQueryState({
+    q: '', page: '1', type: '', status: '', source: '', record: '', from: '', to: '', tx: '',
+  });
+  const page = toInt(query.page, 1);
+  const search = query.q;
+  const filters = useMemo<TxFilters>(() => ({
+    type:   query.type   as TxTypeFilter,
+    status: query.status as TxStatusFilter,
+    source: query.source as TxSourceFilter,
+    record: query.record as TxRecordFilter,
+    dateFrom: query.from,
+    dateTo:   query.to,
+  }), [query]);
   const { type: typeFilter, status: statusFilter, source: sourceFilter, record: recordFilter, dateFrom = '', dateTo = '' } = filters;
+
+  const [searchInput, setSearchInput] = useState(search);
   const [showFilters, setShowFilters] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isFetching, setIsFetching] = useState(false);
@@ -128,24 +143,28 @@ export function MovementsView({
     fetchData(initial);
   }, [fetchData]);
 
-  // Sync when header search is submitted while already on this view
-  useEffect(() => {
-    if (initialSearch === '') return;
-    setSearchInput(initialSearch);
-    setSearch(initialSearch);
-    setPage(1);
-  }, [initialSearch]);
+  // Follow the URL when it changes from outside the box (Back, or a shared link).
+  useEffect(() => { setSearchInput(search); }, [search]);
 
-  function submitSearch() { setSearch(searchInput); setPage(1); }
+  function submitSearch() { setQuery({ q: searchInput, page: '1' }); }
+
+  const setPage = (next: number) => setQuery({ page: String(next) });
+
+  // `?tx=` is what opens the drawer, so a movement can be linked to directly.
+  // Clicking a row already has the record in hand — only a cold load fetches.
+  const openTx = (tx: Transaction) => { setSelectedTx(tx); setQuery({ tx: tx.id }); };
+  const closeTx = () => setQuery({ tx: '' });
 
   useEffect(() => {
-    if (!initialSelectedId) return;
+    if (!query.tx) { setSelectedTx(null); return; }
+    if (selectedTx?.id === query.tx) return;
     setIsLoadingDetail(true);
-    transactionsService.get(initialSelectedId)
+    transactionsService.get(query.tx)
       .then(setSelectedTx)
-      .catch(() => {})
+      .catch(() => setSelectedTx(null))
       .finally(() => setIsLoadingDetail(false));
-  }, [initialSelectedId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query.tx]);
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -170,10 +189,18 @@ export function MovementsView({
 
   const activeFilterCount = (typeFilter ? 1 : 0) + (statusFilter ? 1 : 0) + (sourceFilter ? 1 : 0) + (recordFilter ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
 
-  const clearFilters = () => { setFilters({ type: '', status: '', source: '', record: '', dateFrom: '', dateTo: '' }); setPage(1); };
-  const handleFilterChange = (next: Partial<TxFilters>) => { setFilters(f => ({ ...f, ...next })); setPage(1); };
+  const clearFilters = () => setQuery({ type: '', status: '', source: '', record: '', from: '', to: '', page: '1' });
+  const handleFilterChange = (next: Partial<TxFilters>) => setQuery({
+    ...(next.type   !== undefined && { type:   next.type }),
+    ...(next.status !== undefined && { status: next.status }),
+    ...(next.source !== undefined && { source: next.source }),
+    ...(next.record !== undefined && { record: next.record }),
+    ...(next.dateFrom !== undefined && { from: next.dateFrom }),
+    ...(next.dateTo   !== undefined && { to:   next.dateTo }),
+    page: '1',
+  });
 
-  if (error) return <div className="p-8 text-brand-danger font-semibold">{error}</div>;
+  if (error) return <ErrorState message={error} onRetry={() => { fetchSummary(); return fetchData(true); }} />;
   if (isInitialLoading) {
     return (
       <div className="space-y-8">
@@ -195,8 +222,8 @@ export function MovementsView({
     <TransactionDetailDrawer
       transaction={selectedTx}
       isLoading={isLoadingDetail}
-      onClose={() => setSelectedTx(null)}
-      onDeleted={() => { setSelectedTx(null); fetchData(); fetchSummary(); }}
+      onClose={closeTx}
+      onDeleted={() => { closeTx(); fetchData(); fetchSummary(); }}
       onUpdated={tx => { setSelectedTx(tx); fetchData(); fetchSummary(); }}
       canWrite={canWrite(user?.role)}
     />
@@ -326,13 +353,26 @@ export function MovementsView({
                 : transactions.length === 0
                   ? (
                     <tr>
-                      <td colSpan={6} className="px-8 py-16 text-center text-sm font-semibold text-slate-400">
-                        No se encontraron movimientos con los filtros aplicados.
+                      <td colSpan={6}>
+                        {search || activeFilterCount > 0 ? (
+                          <EmptyState
+                            icon={Search}
+                            title="Sin resultados"
+                            hint="Ningún movimiento coincide con la búsqueda y los filtros aplicados."
+                            action={{ label: 'Limpiar búsqueda y filtros', onClick: () => { setSearchInput(''); setQuery({ q: '', type: '', status: '', source: '', record: '', from: '', to: '', page: '1' }); } }}
+                          />
+                        ) : (
+                          <EmptyState
+                            title="Aún no hay movimientos"
+                            hint="Los movimientos aparecerán aquí tras la sincronización con Siigo o al registrar uno manualmente."
+                            action={canWrite(user?.role) && onCreateMovement ? { label: 'Nuevo movimiento', onClick: onCreateMovement } : undefined}
+                          />
+                        )}
                       </td>
                     </tr>
                   )
                 : transactions.map(tx => (
-                  <tr key={tx.id} onClick={() => setSelectedTx(tx)} className="hover:bg-slate-50 transition-colors group cursor-pointer">
+                  <tr key={tx.id} onClick={() => openTx(tx)} className="hover:bg-slate-50 transition-colors group cursor-pointer">
                     <td className="px-3 sm:px-8 py-3 sm:py-6 text-sm font-semibold text-slate-500 whitespace-nowrap">{tx.date}</td>
                     <td className="px-3 sm:px-8 py-3 sm:py-6 max-w-xs">
                       <p className="text-sm font-bold text-slate-900">{tx.description}</p>

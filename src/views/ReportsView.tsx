@@ -1,10 +1,12 @@
-import ExcelJS from 'exceljs';
 import { AlertTriangle,ChevronLeft,ChevronRight,Download,FileText,Sparkles,TrendingDown,TrendingUp,X } from 'lucide-react';
 import { motion } from 'motion/react';
-import { useEffect,useRef,useState } from 'react';
+import { useCallback,useEffect,useRef,useState } from 'react';
+import { ErrorState } from '../components/ErrorState';
+import { useChartTheme } from '../lib/chartTheme';
 import { Bar,CartesianGrid,ComposedChart,Line,ReferenceLine,ResponsiveContainer,Tooltip,XAxis,YAxis } from 'recharts';
 import { Skeleton,SkeletonCard,SkeletonChart } from '../components/Skeleton';
 import { useSettings } from '../contexts/SettingsContext';
+import { useQueryParam } from '../hooks/useQueryState';
 import { downloadReportPDF, PDF_BAR_HEX } from '../lib/reportPdf';
 import { cn } from '../lib/utils';
 import { reportsService,type ReportPeriod,type ReportSummary } from '../services';
@@ -56,7 +58,10 @@ const PROJECTION_META: Record<ReportPeriod, { title: string; desc: string }> = {
   },
 };
 
+// Loaded on demand, like the PDF exporter below it — neither belongs in the
+// bundle a user pays for just to read a report.
 async function downloadXLSX(data: ReportSummary, period: ReportPeriod, formatCurrency: (n: number) => string) {
+  const { default: ExcelJS } = await import('exceljs');
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Intexa ArCa';
 
@@ -136,22 +141,30 @@ export function ReportsView() {
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showInsight, setShowInsight] = useState(false);
   const [error, setError] = useState('');
-  const [period, setPeriod] = useState<ReportPeriod>('mensual');
+  // The period is in the URL so a report can be shared at the window it was read.
+  const [periodParam, setPeriodParam] = useQueryParam('period', 'mensual');
+  const period = (PERIODS.some(p => p.key === periodParam) ? periodParam : 'mensual') as ReportPeriod;
+  const setPeriod = (next: ReportPeriod) => setPeriodParam(next);
   const [catPage, setCatPage] = useState(0);
   const chartCardRef = useRef<HTMLDivElement>(null);
   const exportMenuRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    setIsLoading(true);
-    setError('');
+  const load = useCallback(({ silent = false } = {}) => {
+    if (!silent) {
+      setIsLoading(true);
+      setError('');
+    }
     setCatPage(0);
-    reportsService.getSummary(period)
+    return reportsService.getSummary(period)
       .then(setData)
-      .catch((err: any) => setError(err.message ?? 'No se pudo cargar los reportes.'))
-      .finally(() => setIsLoading(false));
+      .catch((err: any) => { if (!silent) setError(err.message ?? 'No se pudo cargar los reportes.'); })
+      .finally(() => { if (!silent) setIsLoading(false); });
   }, [period]);
 
+  useEffect(() => { load(); }, [load]);
+
   const { formatCurrency, formatCompact } = useSettings();
+  const chart = useChartTheme();
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -173,7 +186,7 @@ export function ReportsView() {
     }
   }
 
-  if (error) return <div className="p-8 text-brand-danger font-semibold">{error}</div>;
+  if (error) return <ErrorState message={error} onRetry={load} />;
   if (isLoading) {
     return (
       <div className="space-y-8">
@@ -282,18 +295,18 @@ export function ReportsView() {
           <div className="flex-1 min-h-[200px]">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={data.cashFlowChart.map(p => ({ ...p, net: p.ingresos - p.egresos }))} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} barGap={0}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#DBDCDE" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#88898D', fontSize: 10, fontWeight: 800 }} dy={8} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chart.neutral} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: chart.axis, fontSize: 10, fontWeight: 800 }} dy={8} />
                 <YAxis hide />
-                <ReferenceLine y={0} stroke="#B8B8BB" strokeDasharray="4 4" />
+                <ReferenceLine y={0} stroke={chart.axis} strokeDasharray="4 4" />
                 <Tooltip
-                  cursor={{ fill: '#EDEDEE' }}
-                  contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}
+                  cursor={{ fill: chart.cursor }}
+                  contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', backgroundColor: chart.surface, color: chart.text }}
                   formatter={(value: number, name: string) => [formatCompact(value), name]}
                 />
-                <Bar dataKey="ingresos" name="Ingresos" fill="#7A9A01" radius={[8, 8, 0, 0]} barSize={24} />
-                <Bar dataKey="egresos" name="Egresos" fill="#D86018" radius={[8, 8, 0, 0]} barSize={24} />
-                <Line dataKey="net" name="Neto" type="monotone" stroke="#F2A900" strokeWidth={2.5} dot={{ r: 4, fill: '#F2A900', strokeWidth: 0 }} activeDot={{ r: 6 }} />
+                <Bar dataKey="ingresos" name="Ingresos" fill={chart.income} radius={[8, 8, 0, 0]} barSize={24} />
+                <Bar dataKey="egresos" name="Egresos" fill={chart.expense} radius={[8, 8, 0, 0]} barSize={24} />
+                <Line dataKey="net" name="Neto" type="monotone" stroke={chart.warning} strokeWidth={2.5} dot={{ r: 4, fill: chart.warning, strokeWidth: 0 }} activeDot={{ r: 6 }} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>

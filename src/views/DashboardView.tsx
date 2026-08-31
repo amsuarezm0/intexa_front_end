@@ -39,18 +39,36 @@ import { cn } from '../lib/utils';
 import type { Transaction } from '../services';
 import { dashboardService,transactionsService,type BankAccount,type BankBalance,type DashboardSummary } from '../services';
 
-const SALDO_UPDATED_KEY = 'arca_saldo_updated_date';
+const SALDO_PROMPT_KEY = 'arca_saldo_prompt_date';
 
-function todayISODate() {
-  return new Date().toISOString().slice(0, 10);
+// Colombia has no DST, so the API anchors "today" to UTC-5. The client must use
+// the same anchor: with a UTC date the day rolled over at 19:00 COT and the
+// tesorero was asked for the saldo a second time the same working day.
+const coDateFormat = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/Bogota',
+  year: 'numeric', month: '2-digit', day: '2-digit',
+});
+
+function todayCO(): string {
+  return coDateFormat.format(new Date());
 }
 
-function hasSaldoBeenUpdatedToday(): boolean {
-  return localStorage.getItem(SALDO_UPDATED_KEY) === todayISODate();
+// The prompt is per user: two people sharing a browser each get asked once.
+function promptKey(userId?: string) {
+  return `${SALDO_PROMPT_KEY}_${userId || 'anon'}`;
 }
 
-function markSaldoUpdatedToday() {
-  localStorage.setItem(SALDO_UPDATED_KEY, todayISODate());
+/** True once the tesorero has been prompted today — confirming or skipping. */
+function hasBeenPromptedToday(userId?: string): boolean {
+  try {
+    return localStorage.getItem(promptKey(userId)) === todayCO();
+  } catch { return false; }
+}
+
+function markPromptedToday(userId?: string) {
+  try {
+    localStorage.setItem(promptKey(userId), todayCO());
+  } catch { /* private mode: worst case we ask again next mount */ }
 }
 
 function financialHealth(income: number, netFlow: number): { label: string; bars: number; color: string; barColor: string } {
@@ -76,6 +94,9 @@ export function DashboardView({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [bankBalance, setBankBalance] = useState<BankBalance | null>(null);
+  // The prompt decision waits for this: the API is the source of truth for
+  // whether the saldo was already loaded today (by anyone, on any device).
+  const [bankLoaded, setBankLoaded] = useState(false);
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [showSaldoModal, setShowSaldoModal] = useState(false);
@@ -95,7 +116,10 @@ export function DashboardView({
     try {
       const summary = await dashboardService.getSummary();
       setData(summary);
-      dashboardService.getBankBalance().then(setBankBalance).catch(() => {});
+      dashboardService.getBankBalance()
+        .then(setBankBalance)
+        .catch(() => {})
+        .finally(() => setBankLoaded(true));
     } catch (err: any) {
       if (!silent) setError(err.message ?? 'No se pudo cargar el dashboard.');
     } finally {
@@ -105,11 +129,17 @@ export function DashboardView({
 
   useEffect(() => { load(); }, [load]);
 
+  // Asked once per tesorero per day. The API returns no balance unless it was
+  // updated today (COT), so `bankBalance === null` is the authoritative
+  // "pending" signal; the local flag then keeps the dashboard from asking again
+  // on every remount (navigation, Siigo sync) when the prompt was skipped.
   useEffect(() => {
-    if (isTesorero && !hasSaldoBeenUpdatedToday()) {
-      setShowSaldoModal(true);
-    }
-  }, [isTesorero]);
+    if (!isTesorero || !bankLoaded) return;
+    if (bankBalance) return;
+    if (hasBeenPromptedToday(user?.id)) return;
+    markPromptedToday(user?.id);
+    setShowSaldoModal(true);
+  }, [isTesorero, bankLoaded, bankBalance, user?.id]);
 
   async function handleSaldoUpdate(accounts: BankAccount[]) {
     setSaldoSaving(true);
@@ -117,7 +147,6 @@ export function DashboardView({
     try {
       const updated = await dashboardService.updateBankBalance(accounts);
       setBankBalance(updated);
-      markSaldoUpdatedToday();
     } catch {
       setBankBalance(prev => ({
         accounts,
@@ -125,7 +154,6 @@ export function DashboardView({
         updatedAt: new Date().toISOString(),
         updatedBy: prev?.updatedBy ?? user?.name ?? '',
       }));
-      markSaldoUpdatedToday();
     } finally {
       setSaldoSaving(false);
       setShowSaldoModal(false);
@@ -326,7 +354,7 @@ export function DashboardView({
           {/* Col 3: Saldo Bancario — stretches to match the two-card columns */}
           <div className={cn(
             "bg-white p-6 rounded-2xl border card-shadow group transition-all cursor-default",
-            !hasSaldoBeenUpdatedToday() && isTesorero
+            !bankBalance && isTesorero
               ? "border-brand-warning/30 ring-1 ring-brand-warning/30"
               : "border-slate-100 hover:border-brand-primary/30"
           )}>
@@ -362,7 +390,7 @@ export function DashboardView({
               </div>
             )}
             <div className="flex items-center gap-2">
-              {!hasSaldoBeenUpdatedToday() && isTesorero ? (
+              {!bankBalance && isTesorero ? (
                 <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-brand-warning/15 text-brand-warning">Pendiente actualizar</span>
               ) : (
                 <span className="text-xs text-slate-400 font-medium truncate">{saldoUpdatedLabel}</span>

@@ -1,6 +1,7 @@
-import { Check,ChevronDown,History,KeyRound,Palette,ShieldCheck,UserPlus } from 'lucide-react';
+import { Check,ChevronDown,History,KeyRound,Palette,Plus,ShieldCheck,Tags,UserPlus } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useCallback,useEffect,useRef,useState } from 'react';
+import { CategoryFormModal } from '../components/CategoryFormModal';
 import { ErrorState } from '../components/ErrorState';
 import { DeleteUserModal } from '../components/DeleteUserModal';
 import { LogDetailModal } from '../components/LogDetailModal';
@@ -13,13 +14,20 @@ import { useSettings } from '../contexts/SettingsContext';
 import { THEMES, useTheme, type ThemeId } from '../contexts/ThemeContext';
 import { useToast } from '../contexts/ToastContext';
 import { getStoredUser } from '../lib/api';
-import { roleLabel } from '../lib/roles';
+import { canManageCategories,roleLabel } from '../lib/roles';
 import { cn } from '../lib/utils';
-import { settingsService,usersService,type ActivityLog,type Settings,type User } from '../services';
+import { categoriesService,settingsService,usersService,type ActivityLog,type Category,type Settings,type User } from '../services';
+
+const CATEGORY_TYPE_LABELS: Record<Category['type'], string> = {
+  income: 'Ingreso',
+  expense: 'Egreso',
+  both: 'Ambos',
+};
 
 export function SettingsView() {
   const currentUser = getStoredUser();
   const isAdmin = currentUser?.role?.toUpperCase() === 'ADMINISTRADOR';
+  const canAddCategory = canManageCategories(currentUser?.role);
 
   const toast = useToast();
   const { theme, setTheme } = useTheme();
@@ -29,6 +37,8 @@ export function SettingsView() {
   // never prematurely save the staged (unsaved) currency edits in `settings`.
   const savedRef = useRef<Settings>(settings);
   const [logs, setLogs] = useState<ActivityLog[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [showAddCategory, setShowAddCategory] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -53,6 +63,8 @@ export function SettingsView() {
       settingsService.get()
         .then(s => { setSettings(s); savedRef.current = s; })
         .catch((err: any) => setError(err.message ?? 'No se pudo cargar la configuración.')),
+      // Categories are readable by every role; only writing is restricted.
+      categoriesService.list().then(setCategories).catch(() => {}),
     ];
 
     // User management and activity logs are ADMINISTRADOR-only on the API.
@@ -238,6 +250,49 @@ export function SettingsView() {
             >
               {saving ? 'Guardando...' : 'Guardar Preferencias'}
             </button>
+          </div>
+
+          <div className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[48px] border border-slate-100 card-shadow space-y-6">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <Tags size={22} className="text-brand-primary" />
+                <h3 className="text-2xl font-black text-slate-900 tracking-tight">Categorías</h3>
+              </div>
+              {canAddCategory && (
+                <button
+                  onClick={() => setShowAddCategory(true)}
+                  className="flex items-center gap-1.5 bg-brand-primary text-white px-4 py-2.5 rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-brand-accent transition-all shadow-lg shadow-brand-primary/20"
+                >
+                  <Plus size={16} /><span>Nueva</span>
+                </button>
+              )}
+            </div>
+            <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+              {categories.length === 0 ? (
+                <p className="text-sm font-semibold text-slate-400">No hay categorías registradas.</p>
+              ) : categories.map(c => (
+                <div key={c.id} className="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-slate-50">
+                  <span className="font-bold text-sm text-slate-700 truncate">{c.name}</span>
+                  <span
+                    title={`Categoría de tipo ${CATEGORY_TYPE_LABELS[c.type] ?? c.type}`}
+                    className={cn(
+                      "text-[10px] font-black px-3 py-1 rounded-lg uppercase tracking-widest flex-shrink-0",
+                      c.type === 'income'  && "bg-brand-success/10 text-brand-success",
+                      c.type === 'expense' && "bg-brand-primary/10 text-brand-primary",
+                      c.type === 'both'    && "bg-slate-200 text-slate-500",
+                    )}
+                  >
+                    {CATEGORY_TYPE_LABELS[c.type] ?? c.type}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {showAddCategory && (
+              <CategoryFormModal
+                onSuccess={created => setCategories(cs => [...cs, created].sort((a, b) => a.name.localeCompare(b.name)))}
+                onClose={() => setShowAddCategory(false)}
+              />
+            )}
           </div>
 
           <div className="bg-white p-5 sm:p-8 rounded-3xl sm:rounded-[48px] border border-slate-100 card-shadow space-y-6">

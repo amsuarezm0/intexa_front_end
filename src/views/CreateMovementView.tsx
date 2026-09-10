@@ -2,14 +2,18 @@ import {
 ArrowDownCircle,ArrowUpCircle,
 Calendar as CalendarIcon,
 ChevronDown,
+Plus,
 Sparkles,
 TrendingUp,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useEffect,useState } from 'react';
+import { CategoryFormModal } from '../components/CategoryFormModal';
 import { CurrencyInput } from '../components/CurrencyInput';
 import { useSettings } from '../contexts/SettingsContext';
+import { getStoredUser } from '../lib/api';
 import { parseMoney } from '../lib/money';
+import { canManageCategories } from '../lib/roles';
 import { cn } from '../lib/utils';
 import { categoriesService,transactionsService,type Category,type TransactionSummary } from '../services';
 
@@ -26,9 +30,11 @@ export function CreateMovementView({ onBack, onSave }: CreateMovementViewProps) 
   const [description, setDescription] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
   const [summary, setSummary] = useState<TransactionSummary | null>(null);
+  const [showAddCategory, setShowAddCategory] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  const canAddCategory = canManageCategories(getStoredUser()?.role);
   const { formatCurrency, currencyCode, locale } = useSettings();
   const amountNum = parseMoney(amount, locale);
 
@@ -144,9 +150,21 @@ export function CreateMovementView({ onBack, onSave }: CreateMovementViewProps) 
 
             {/* Category */}
             <div className="space-y-3">
-              <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest pl-1">CATEGORÍA</label>
+              <div className="flex items-center justify-between gap-4 pl-1">
+                <label htmlFor="movement-category" className="text-[11px] font-black text-slate-400 uppercase tracking-widest">CATEGORÍA</label>
+                {canAddCategory && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAddCategory(true)}
+                    className="flex items-center gap-1 text-[11px] font-black text-brand-primary uppercase tracking-widest hover:text-brand-accent transition-colors"
+                  >
+                    <Plus size={14} /><span>Nueva categoría</span>
+                  </button>
+                )}
+              </div>
               <div className="relative">
                 <select
+                  id="movement-category"
                   value={category}
                   onChange={e => setCategory(e.target.value)}
                   className="w-full px-5 py-5 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-700 appearance-none outline-none focus:border-brand-primary transition-all"
@@ -156,6 +174,17 @@ export function CreateMovementView({ onBack, onSave }: CreateMovementViewProps) 
                 <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={20} />
               </div>
             </div>
+
+            {showAddCategory && (
+              <CategoryFormModal
+                initialType={type === 'Ingreso' ? 'income' : 'expense'}
+                onSuccess={created => {
+                  setCategories(cs => [...cs, created].sort((a, b) => a.name.localeCompare(b.name)));
+                  setCategory(created.name);
+                }}
+                onClose={() => setShowAddCategory(false)}
+              />
+            )}
 
             {/* Description */}
             <div className="space-y-3">

@@ -10,6 +10,13 @@ export function canWriteProjections(role?: string | null): boolean {
   return r === 'ADMINISTRADOR' || r === 'GESTIÓN';
 }
 
+// Categories are shared by movements and projections, so every role that
+// records data may add one — everyone except CONSULTA (read-only).
+export function canManageCategories(role?: string | null): boolean {
+  const r = role?.toUpperCase();
+  return r === 'ADMINISTRADOR' || r === 'TESORERÍA' || r === 'GESTIÓN';
+}
+
 export function isAdmin(role?: string | null): boolean {
   return role?.toUpperCase() === 'ADMINISTRADOR';
 }

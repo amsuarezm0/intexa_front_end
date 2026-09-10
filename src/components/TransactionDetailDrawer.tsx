@@ -12,6 +12,7 @@ import { CategoryBadge } from './CategoryBadge';
 import { StatusBadge } from './StatusBadge';
 import { ThirdPartyLink } from './ThirdPartyLink';
 import { ThirdPartyPicker } from './ThirdPartyPicker';
+import { DueDateShift } from './DueDateShift';
 
 interface Props {
   transaction: Transaction | null;
@@ -39,6 +40,8 @@ export function TransactionDetailDrawer({ transaction, isLoading, onClose, onDel
   const [editCategory, setEditCategory]   = useState('');
   const [editStatus, setEditStatus]       = useState<'Completado' | 'Pendiente' | 'Anulado'>('Pendiente');
   const [editThirdParty, setEditThirdParty] = useState<ThirdParty | null>(null);
+  const [editDueDate, setEditDueDate] = useState('');
+  const [editSecondaryDueDate, setEditSecondaryDueDate] = useState('');
 
   const open = !!(transaction || isLoading);
   const canEdit = transaction && transaction.source !== 'Siigo' && canWrite;
@@ -68,6 +71,8 @@ export function TransactionDetailDrawer({ transaction, isLoading, onClose, onDel
     setEditDescription(transaction.description);
     setEditCategory(transaction.category);
     setEditThirdParty(transaction.thirdParty ?? null);
+    setEditDueDate(transaction.dueDate ?? '');
+    setEditSecondaryDueDate(transaction.secondaryDueDate ?? '');
     setEditStatus(transaction.status as 'Completado' | 'Pendiente' | 'Anulado');
     setEditing(true);
   }
@@ -94,6 +99,10 @@ export function TransactionDetailDrawer({ transaction, isLoading, onClose, onDel
         // counterparty as "no third party", so omitting it would wipe one.
         counterpartyIdentification: editThirdParty?.identification ?? '',
         counterpartyBranchOffice: editThirdParty?.branchOffice ?? 0,
+        // Always sent for the same reason as the counterparty: an omitted date
+        // is read as "no date" and would clear the stored one.
+        dueDate: editDueDate,
+        secondaryDueDate: editSecondaryDueDate,
       });
       onUpdated?.(updated);
       setEditing(false);
@@ -258,6 +267,24 @@ export function TransactionDetailDrawer({ transaction, isLoading, onClose, onDel
                         preferredType={editType === 'Ingreso' ? 'Cliente' : 'Proveedor'}
                       />
 
+                      {/* Dates */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Vencimiento</p>
+                          <input type="date" value={editDueDate} onChange={e => setEditDueDate(e.target.value)} className={inputCls} />
+                        </div>
+                        <div className="space-y-2">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fecha acordada</p>
+                          <input
+                            type="date"
+                            value={editSecondaryDueDate}
+                            onChange={e => setEditSecondaryDueDate(e.target.value)}
+                            title="Cuándo se pagará realmente; reemplaza al vencimiento en flujo de caja y proyecciones"
+                            className={inputCls}
+                          />
+                        </div>
+                      </div>
+
                       {/* Status */}
                       <div className="space-y-2">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Estado</p>
@@ -323,6 +350,19 @@ export function TransactionDetailDrawer({ transaction, isLoading, onClose, onDel
                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Referencia</p>
                             </div>
                             <p className="text-sm font-bold text-slate-900">{transaction.reference}</p>
+                          </div>
+                        )}
+
+                        {transaction.secondaryDueDate && (
+                          <div className="bg-slate-50 p-4 rounded-2xl">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Calendar size={14} className="text-slate-400" />
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fecha acordada</p>
+                            </div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-sm font-bold text-slate-900">{transaction.secondaryDueDate}</p>
+                              <DueDateShift days={transaction.dueDateShiftDays} originalDueDate={transaction.dueDate || transaction.date} />
+                            </div>
                           </div>
                         )}
 

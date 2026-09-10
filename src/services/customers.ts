@@ -18,6 +18,12 @@ export interface CustomerInvoice {
   category: string;
   detail?: string;
   installments?: Installment[];
+  /** Agreed payment date — the only manual edit on a Siigo document. */
+  secondaryDueDate?: string;
+  /** The date that actually governs: agreed when set, original otherwise. */
+  effectiveDueDate?: string;
+  /** Days between original and agreed; positive means pushed out. */
+  dueDateShiftDays?: number;
 }
 
 /** A document's counterparty, resolved against the synced third parties.

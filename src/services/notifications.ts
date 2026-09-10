@@ -10,6 +10,8 @@ export interface NotificationItem {
   daysOverdue: number; // negative = days until due
   urgency: 'overdue' | 'due-soon' | 'upcoming';
   thirdParty?: ThirdParty;
+  secondaryDueDate?: string;
+  dueDateShiftDays?: number;
 }
 
 export interface NotificationSummary {

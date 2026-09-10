@@ -3,6 +3,7 @@ export * from './cashflow';
 export * from './categories';
 export * from './customers';
 export * from './dashboard';
+export * from './documents';
 export * from './notifications';
 export * from './projections';
 export * from './reports';

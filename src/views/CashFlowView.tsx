@@ -356,7 +356,12 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
       onUpdated={tx => { setSelectedTx(tx); setPeriodData(prev => ({ ...prev, transactions: prev.transactions.map(t => t.id === tx.id ? tx : t) })); }}
       canWrite={canWrite(user?.role)}
     />
-    <DocumentDetailDrawer doc={selectedDoc} onClose={() => setSelectedDoc(null)} />
+    <DocumentDetailDrawer
+      doc={selectedDoc}
+      onClose={() => setSelectedDoc(null)}
+      canEdit={canWrite(user?.role)}
+      onDueDateChanged={updated => { setSelectedDoc(updated); load({ silent: true }); }}
+    />
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8 pb-12">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
         <div className="space-y-1">

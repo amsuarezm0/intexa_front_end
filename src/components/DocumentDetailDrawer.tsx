@@ -1,11 +1,13 @@
 import { ArrowDownLeft,ArrowUpRight,Calendar,Database,Hash,Tag,User,X } from 'lucide-react';
 import { AnimatePresence,motion } from 'motion/react';
 import { useSettings } from '../contexts/SettingsContext';
+import { documentsService } from '../services';
 import { dialogProps,useModal } from '../hooks/useModal';
 import { cn } from '../lib/utils';
 import type { PeriodInvoice,PeriodPurchase } from '../services/cashflow';
 import { CategoryBadge } from './CategoryBadge';
 import { StatusBadge } from './StatusBadge';
+import { SecondaryDueDateEditor } from './SecondaryDueDateEditor';
 import { ThirdPartyLink } from './ThirdPartyLink';
 
 type Doc = (PeriodInvoice & { docType: 'FV' }) | (PeriodPurchase & { docType: 'FC' });
@@ -13,6 +15,9 @@ type Doc = (PeriodInvoice & { docType: 'FV' }) | (PeriodPurchase & { docType: 'F
 interface Props {
   doc: Doc | null;
   onClose: () => void;
+  /** Called after the agreed date changes, so the view can refresh its figures. */
+  onDueDateChanged?: (doc: Doc) => void;
+  canEdit?: boolean;
 }
 
 function Row({ label, icon, children }: { label: string; icon: React.ReactNode; children: React.ReactNode }) {
@@ -27,7 +32,7 @@ function Row({ label, icon, children }: { label: string; icon: React.ReactNode; 
   );
 }
 
-export function DocumentDetailDrawer({ doc, onClose }: Props) {
+export function DocumentDetailDrawer({ doc, onClose, onDueDateChanged, canEdit }: Props) {
   const { formatCurrency } = useSettings();
   const open = !!doc;
   const isInvoice = doc?.docType === 'FV';
@@ -107,8 +112,27 @@ export function DocumentDetailDrawer({ doc, onClose }: Props) {
                 {doc.dueDate && (
                   <Row label="Vencimiento" icon={<Calendar size={14} />}>
                     <p className="text-sm font-bold text-slate-900">{doc.dueDate}</p>
+                    {doc.secondaryDueDate && (
+                      <p className="text-[10px] font-semibold text-slate-400 mt-0.5">original</p>
+                    )}
                   </Row>
                 )}
+
+                {/* The one field on a Siigo document that is ours to set. */}
+                <div className="col-span-2">
+                  <SecondaryDueDateEditor
+                    originalDueDate={doc.dueDate || doc.date}
+                    secondaryDueDate={doc.secondaryDueDate}
+                    dueDateShiftDays={doc.dueDateShiftDays}
+                    canEdit={canEdit}
+                    onSave={async next => {
+                      const saved = doc.docType === 'FV'
+                        ? await documentsService.setInvoiceSecondaryDueDate(doc.id, next)
+                        : await documentsService.setPurchaseSecondaryDueDate(doc.id, next);
+                      onDueDateChanged?.({ ...(saved as any), docType: doc.docType });
+                    }}
+                  />
+                </div>
 
                 <Row label={isInvoice ? 'Cliente' : 'Proveedor'} icon={<User size={14} />}>
                   {doc.thirdParty ? (

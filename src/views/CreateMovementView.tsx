@@ -17,6 +17,7 @@ import { canManageCategories } from '../lib/roles';
 import { cn } from '../lib/utils';
 import { categoriesService,transactionsService,type Category,type ThirdParty,type TransactionSummary } from '../services';
 import { ThirdPartyPicker } from '../components/ThirdPartyPicker';
+import { DueDateShift } from '../components/DueDateShift';
 
 interface CreateMovementViewProps {
   onBack: () => void;
@@ -30,6 +31,8 @@ export function CreateMovementView({ onBack, onSave }: CreateMovementViewProps) 
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
   const [thirdParty, setThirdParty] = useState<ThirdParty | null>(null);
+  const [dueDate, setDueDate] = useState('');
+  const [secondaryDueDate, setSecondaryDueDate] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
   const [summary, setSummary] = useState<TransactionSummary | null>(null);
   const [showAddCategory, setShowAddCategory] = useState(false);
@@ -74,6 +77,8 @@ export function CreateMovementView({ onBack, onSave }: CreateMovementViewProps) 
         // third party; only the key is sent.
         counterpartyIdentification: thirdParty?.identification,
         counterpartyBranchOffice: thirdParty?.branchOffice,
+        dueDate: dueDate || undefined,
+        secondaryDueDate: secondaryDueDate || undefined,
       });
       onSave();
     } catch (err: any) {
@@ -82,6 +87,16 @@ export function CreateMovementView({ onBack, onSave }: CreateMovementViewProps) 
       setSaving(false);
     }
   };
+
+  // Days between the due date and the agreed one, shown as the user picks them
+  // so the delay is visible before saving rather than only afterwards.
+  const shiftDays = (() => {
+    if (!dueDate || !secondaryDueDate) return null;
+    const a = new Date(dueDate + 'T00:00:00');
+    const b = new Date(secondaryDueDate + 'T00:00:00');
+    if (isNaN(a.getTime()) || isNaN(b.getTime())) return null;
+    return Math.round((b.getTime() - a.getTime()) / 86400000);
+  })();
 
   // Preview figures treat an unparseable amount as zero.
   const previewAmount = isNaN(amountNum) ? 0 : amountNum;
@@ -188,6 +203,40 @@ export function CreateMovementView({ onBack, onSave }: CreateMovementViewProps) 
               onChange={setThirdParty}
               preferredType={type === 'Ingreso' ? 'Cliente' : 'Proveedor'}
             />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="movement-due" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                  Vencimiento <span className="text-slate-300 normal-case tracking-normal font-semibold">· opcional</span>
+                </label>
+                <input
+                  id="movement-due"
+                  type="date"
+                  value={dueDate}
+                  onChange={e => setDueDate(e.target.value)}
+                  title="Cuándo se debe pagar este movimiento"
+                  className="w-full px-4 py-3 border border-slate-200 rounded-2xl text-sm outline-none focus:border-brand-primary transition-colors"
+                />
+              </div>
+              <div>
+                <label htmlFor="movement-agreed" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                  Fecha acordada <span className="text-slate-300 normal-case tracking-normal font-semibold">· opcional</span>
+                </label>
+                <input
+                  id="movement-agreed"
+                  type="date"
+                  value={secondaryDueDate}
+                  onChange={e => setSecondaryDueDate(e.target.value)}
+                  title="Cuándo se pagará realmente; reemplaza al vencimiento en flujo de caja y proyecciones"
+                  className="w-full px-4 py-3 border border-slate-200 rounded-2xl text-sm outline-none focus:border-brand-primary transition-colors"
+                />
+                {shiftDays !== null && (
+                  <div className="mt-2">
+                    <DueDateShift days={shiftDays} originalDueDate={dueDate} />
+                  </div>
+                )}
+              </div>
+            </div>
 
             {showAddCategory && (
               <CategoryFormModal

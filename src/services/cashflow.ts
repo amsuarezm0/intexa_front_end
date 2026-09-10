@@ -47,6 +47,12 @@ export interface PeriodInvoice {
   detail: string;
   installments?: Installment[];
   pendingInstallments?: Installment[];
+  /** Agreed payment date — the only manual edit on a Siigo document. */
+  secondaryDueDate?: string;
+  /** The date that actually governs: agreed when set, original otherwise. */
+  effectiveDueDate?: string;
+  /** Days between original and agreed; positive means pushed out. */
+  dueDateShiftDays?: number;
 }
 
 export interface PeriodPurchase {
@@ -64,6 +70,12 @@ export interface PeriodPurchase {
   detail: string;
   installments?: Installment[];
   pendingInstallments?: Installment[];
+  /** Agreed payment date — the only manual edit on a Siigo document. */
+  secondaryDueDate?: string;
+  /** The date that actually governs: agreed when set, original otherwise. */
+  effectiveDueDate?: string;
+  /** Days between original and agreed; positive means pushed out. */
+  dueDateShiftDays?: number;
 }
 
 export interface PeriodData {

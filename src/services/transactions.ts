@@ -19,6 +19,14 @@ export interface Transaction {
   thirdParty?: ThirdParty;
   createdAt: string;
   updatedAt: string;
+  /** Manual movements carry their own due date; Siigo receipts leave it empty. */
+  dueDate?: string;
+  /** Agreed payment date — the only manual edit on a Siigo document. */
+  secondaryDueDate?: string;
+  /** The date that actually governs: agreed when set, original otherwise. */
+  effectiveDueDate?: string;
+  /** Days between original and agreed; positive means pushed out. */
+  dueDateShiftDays?: number;
 }
 
 export interface TransactionListResponse {
@@ -51,6 +59,8 @@ export interface CreateTransactionInput {
    *  settles the branch office, so only the key is sent. */
   counterpartyIdentification?: string;
   counterpartyBranchOffice?: number;
+  dueDate?: string;
+  secondaryDueDate?: string;
 }
 
 export const transactionsService = {

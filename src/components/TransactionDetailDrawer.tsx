@@ -7,10 +7,11 @@ import { dialogProps,useModal } from '../hooks/useModal';
 import { parseMoney } from '../lib/money';
 import { cn } from '../lib/utils';
 import { CurrencyInput } from './CurrencyInput';
-import { categoriesService,type Category,type Transaction,transactionsService } from '../services';
+import { categoriesService,type Category,type Transaction,transactionsService ,type ThirdParty} from '../services';
 import { CategoryBadge } from './CategoryBadge';
 import { StatusBadge } from './StatusBadge';
 import { ThirdPartyLink } from './ThirdPartyLink';
+import { ThirdPartyPicker } from './ThirdPartyPicker';
 
 interface Props {
   transaction: Transaction | null;
@@ -37,6 +38,7 @@ export function TransactionDetailDrawer({ transaction, isLoading, onClose, onDel
   const [editDescription, setEditDescription] = useState('');
   const [editCategory, setEditCategory]   = useState('');
   const [editStatus, setEditStatus]       = useState<'Completado' | 'Pendiente' | 'Anulado'>('Pendiente');
+  const [editThirdParty, setEditThirdParty] = useState<ThirdParty | null>(null);
 
   const open = !!(transaction || isLoading);
   const canEdit = transaction && transaction.source !== 'Siigo' && canWrite;
@@ -65,6 +67,7 @@ export function TransactionDetailDrawer({ transaction, isLoading, onClose, onDel
     setEditAmount(String(transaction.amount));
     setEditDescription(transaction.description);
     setEditCategory(transaction.category);
+    setEditThirdParty(transaction.thirdParty ?? null);
     setEditStatus(transaction.status as 'Completado' | 'Pendiente' | 'Anulado');
     setEditing(true);
   }
@@ -87,6 +90,10 @@ export function TransactionDetailDrawer({ transaction, isLoading, onClose, onDel
         status: editStatus,
         source: transaction.source,
         isProjection: transaction.isProjection,
+        // Always sent, including when cleared: the server treats an absent
+        // counterparty as "no third party", so omitting it would wipe one.
+        counterpartyIdentification: editThirdParty?.identification ?? '',
+        counterpartyBranchOffice: editThirdParty?.branchOffice ?? 0,
       });
       onUpdated?.(updated);
       setEditing(false);
@@ -243,6 +250,13 @@ export function TransactionDetailDrawer({ transaction, isLoading, onClose, onDel
                           )}
                         </select>
                       </div>
+
+                      {/* Third party */}
+                      <ThirdPartyPicker
+                        value={editThirdParty}
+                        onChange={setEditThirdParty}
+                        preferredType={editType === 'Ingreso' ? 'Cliente' : 'Proveedor'}
+                      />
 
                       {/* Status */}
                       <div className="space-y-2">

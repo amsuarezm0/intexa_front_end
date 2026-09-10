@@ -15,7 +15,8 @@ import { getStoredUser } from '../lib/api';
 import { parseMoney } from '../lib/money';
 import { canManageCategories } from '../lib/roles';
 import { cn } from '../lib/utils';
-import { categoriesService,transactionsService,type Category,type TransactionSummary } from '../services';
+import { categoriesService,transactionsService,type Category,type ThirdParty,type TransactionSummary } from '../services';
+import { ThirdPartyPicker } from '../components/ThirdPartyPicker';
 
 interface CreateMovementViewProps {
   onBack: () => void;
@@ -28,6 +29,7 @@ export function CreateMovementView({ onBack, onSave }: CreateMovementViewProps) 
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
+  const [thirdParty, setThirdParty] = useState<ThirdParty | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [summary, setSummary] = useState<TransactionSummary | null>(null);
   const [showAddCategory, setShowAddCategory] = useState(false);
@@ -68,6 +70,10 @@ export function CreateMovementView({ onBack, onSave }: CreateMovementViewProps) 
         status: 'Pendiente',
         source: 'Manual',
         isProjection: false,
+        // The server settles the Siigo id and branch office from the picked
+        // third party; only the key is sent.
+        counterpartyIdentification: thirdParty?.identification,
+        counterpartyBranchOffice: thirdParty?.branchOffice,
       });
       onSave();
     } catch (err: any) {
@@ -174,6 +180,14 @@ export function CreateMovementView({ onBack, onSave }: CreateMovementViewProps) 
                 <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={20} />
               </div>
             </div>
+
+            {/* Whose movement this is. Income suggests a client, expense a
+                supplier — the picker preselects that tab without limiting it. */}
+            <ThirdPartyPicker
+              value={thirdParty}
+              onChange={setThirdParty}
+              preferredType={type === 'Ingreso' ? 'Cliente' : 'Proveedor'}
+            />
 
             {showAddCategory && (
               <CategoryFormModal

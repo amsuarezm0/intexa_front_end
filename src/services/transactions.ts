@@ -47,6 +47,10 @@ export interface CreateTransactionInput {
   reference?: string;
   source: 'Siigo' | 'Manual';
   isProjection: boolean;
+  /** Third party this movement is with. The server fills in the Siigo id and
+   *  settles the branch office, so only the key is sent. */
+  counterpartyIdentification?: string;
+  counterpartyBranchOffice?: number;
 }
 
 export const transactionsService = {

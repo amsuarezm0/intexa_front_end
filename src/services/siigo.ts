@@ -16,6 +16,8 @@ export interface SiigoSyncResult {
   purchasesImported: number;
   vouchersImported: number;
   paymentReceiptsImported: number;
+  /** Terceros — added when the customer pass joined the full sync. */
+  customersImported?: number;
   updated: number;
   errors?: string[];
 }

@@ -18,6 +18,7 @@ import { LoginView } from './views/LoginView';
 // when its route is first opened, so the initial download carries one view's
 // worth of charting and table code instead of all seven.
 const CashFlowView         = lazyView(() => import('./views/CashFlowView'),         m => m.CashFlowView);
+const ClientsView          = lazyView(() => import('./views/ClientsView'),          m => m.ClientsView);
 const CreateMovementView   = lazyView(() => import('./views/CreateMovementView'),   m => m.CreateMovementView);
 const CreateProjectionView = lazyView(() => import('./views/CreateProjectionView'), m => m.CreateProjectionView);
 const DashboardView        = lazyView(() => import('./views/DashboardView'),        m => m.DashboardView);
@@ -204,6 +205,7 @@ export default function App() {
         <Route path="/projections/new" element={
           <CreateProjectionView onBack={() => navigate('/projections')} onSave={() => navigate('/projections')} />
         } />
+        <Route path="/clients" element={<ClientsView key={refreshKey} user={user} />} />
         <Route path="/reports" element={<ReportsView />} />
         <Route path="/settings" element={<SettingsView />} />
         {/* Unknown path inside the app: fall back to the dashboard. */}

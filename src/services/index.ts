@@ -1,6 +1,7 @@
 export * from './auth';
 export * from './cashflow';
 export * from './categories';
+export * from './customers';
 export * from './dashboard';
 export * from './notifications';
 export * from './projections';

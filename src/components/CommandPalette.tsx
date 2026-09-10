@@ -1,4 +1,4 @@
-import { ArrowLeftRight,BarChart3,Clock,CornerDownLeft,LayoutDashboard,Plus,Search,Settings,TrendingUp,Wallet } from 'lucide-react';
+import { ArrowLeftRight,BarChart3,Clock,CornerDownLeft,LayoutDashboard,Plus,Search,Settings,TrendingUp,Users,Wallet } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useEffect,useMemo,useRef,useState } from 'react';
 import type { LoggedInUser } from '../App';
@@ -61,6 +61,7 @@ export function CommandPalette({ onClose, onNavigate, onSearch, user }: Props) {
       { id: 'cashflow',    label: 'Flujo de Caja',    hint: 'Liquidez',     icon: Wallet,          run: () => onNavigate('/cashflow') },
       { id: 'movements',   label: 'Movimientos',      hint: 'Transacciones',icon: ArrowLeftRight,  run: () => onNavigate('/movements') },
       { id: 'projections', label: 'Proyecciones',     hint: 'Horizontes',   icon: TrendingUp,      run: () => onNavigate('/projections') },
+      { id: 'clients',     label: 'Clientes',         hint: 'Terceros',     icon: Users,           run: () => onNavigate('/clients') },
       { id: 'reports',     label: 'Reportes',         hint: 'Análisis',     icon: BarChart3,       run: () => onNavigate('/reports') },
       { id: 'settings',    label: 'Configuración',    hint: 'Ajustes',      icon: Settings,        run: () => onNavigate('/settings') },
     ];

@@ -12,6 +12,7 @@ RefreshCw,
 Search,
 Settings,
 TrendingUp,
+Users,
 Wallet,
 X,
 } from 'lucide-react';
@@ -106,6 +107,7 @@ export function MainLayout({ children, currentView, onNavigate, onLogout, onSync
     { id: 'cashflow', label: 'Flujo de caja', icon: Wallet },
     { id: 'projections', label: 'Proyecciones', icon: TrendingUp },
     { id: 'movements', label: 'Movimientos', icon: ArrowLeftRight },
+    { id: 'clients', label: 'Clientes', icon: Users },
     { id: 'reports', label: 'Reportes', icon: BarChart3 },
   ];
 

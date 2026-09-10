@@ -11,13 +11,16 @@ interface SyncResultModalProps {
 export function SyncResultModal({ result, onClose }: SyncResultModalProps) {
   const panelRef = useModal({ onClose });
   const hasErrors = (result.errors?.length ?? 0) > 0;
-  const totalNew = result.invoicesImported + result.purchasesImported + result.vouchersImported + result.paymentReceiptsImported;
+  const customersImported = result.customersImported ?? 0;
+  const totalNew = result.invoicesImported + result.purchasesImported + result.vouchersImported
+    + result.paymentReceiptsImported + customersImported;
 
   const counts = [
     { label: 'Facturas de Venta', abbr: 'FV', value: result.invoicesImported },
     { label: 'Facturas de Compra', abbr: 'FC', value: result.purchasesImported },
     { label: 'Recibos de Cobro', abbr: 'RC', value: result.vouchersImported },
     { label: 'Recibos de Pago', abbr: 'RP', value: result.paymentReceiptsImported },
+    { label: 'Clientes', abbr: 'Terceros', value: customersImported },
   ];
 
   return (

@@ -1,3 +1,4 @@
+import type { ThirdParty } from './customers';
 import { api } from '../lib/api';
 
 export interface Transaction {
@@ -12,6 +13,10 @@ export interface Transaction {
   detail?: string;
   source: 'Siigo' | 'Manual';
   isProjection: boolean;
+  /** Counterparty of a synced RC/RP — absent on manual movements. */
+  counterpartyIdentification?: string;
+  counterpartyBranchOffice?: number;
+  thirdParty?: ThirdParty;
   createdAt: string;
   updatedAt: string;
 }

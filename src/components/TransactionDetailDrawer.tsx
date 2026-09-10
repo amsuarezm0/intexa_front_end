@@ -1,4 +1,4 @@
-import { ArrowDownLeft,ArrowUpRight,Calendar,Check,Database,Hash,Pencil,Tag,Trash2,X } from 'lucide-react';
+import { ArrowDownLeft,ArrowUpRight,Calendar,Check,Database,Hash,Pencil,Tag,Trash2,X,Users} from 'lucide-react';
 import { AnimatePresence,motion } from 'motion/react';
 import { useEffect,useState } from 'react';
 import { useToast } from '../contexts/ToastContext';
@@ -10,6 +10,7 @@ import { CurrencyInput } from './CurrencyInput';
 import { categoriesService,type Category,type Transaction,transactionsService } from '../services';
 import { CategoryBadge } from './CategoryBadge';
 import { StatusBadge } from './StatusBadge';
+import { ThirdPartyLink } from './ThirdPartyLink';
 
 interface Props {
   transaction: Transaction | null;
@@ -308,6 +309,25 @@ export function TransactionDetailDrawer({ transaction, isLoading, onClose, onDel
                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Referencia</p>
                             </div>
                             <p className="text-sm font-bold text-slate-900">{transaction.reference}</p>
+                          </div>
+                        )}
+
+                        {transaction.thirdParty && (
+                          <div className="bg-slate-50 p-4 rounded-2xl">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Users size={14} className="text-slate-400" />
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                {transaction.type === 'Ingreso' ? 'Cliente' : 'Proveedor'}
+                              </p>
+                            </div>
+                            <div className="text-sm font-bold text-slate-900">
+                              <ThirdPartyLink thirdParty={transaction.thirdParty} />
+                              {transaction.thirdParty.identification && transaction.thirdParty.name && (
+                                <p className="text-[11px] font-mono font-semibold text-slate-400 mt-0.5">
+                                  {transaction.thirdParty.identification}
+                                </p>
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>

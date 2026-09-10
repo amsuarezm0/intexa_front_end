@@ -20,6 +20,19 @@ export interface CustomerInvoice {
   installments?: Installment[];
 }
 
+/** A document's counterparty, resolved against the synced third parties.
+ *  `customerId` is empty when the third party has not been synced — the
+ *  identification is still present so the document stays legible. */
+export interface ThirdParty {
+  customerId?: string;
+  identification?: string;
+  branchOffice?: number;
+  siigoId?: string;
+  name?: string;
+  commercialName?: string;
+  type?: CustomerType;
+}
+
 /** Siigo's third-party classification, stored in Spanish. */
 export type CustomerType = 'Cliente' | 'Proveedor' | 'Otro';
 

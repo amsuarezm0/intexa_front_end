@@ -6,6 +6,7 @@ import { cn } from '../lib/utils';
 import type { PeriodInvoice,PeriodPurchase } from '../services/cashflow';
 import { CategoryBadge } from './CategoryBadge';
 import { StatusBadge } from './StatusBadge';
+import { ThirdPartyLink } from './ThirdPartyLink';
 
 type Doc = (PeriodInvoice & { docType: 'FV' }) | (PeriodPurchase & { docType: 'FC' });
 
@@ -110,11 +111,22 @@ export function DocumentDetailDrawer({ doc, onClose }: Props) {
                 )}
 
                 <Row label={isInvoice ? 'Cliente' : 'Proveedor'} icon={<User size={14} />}>
-                  <p className="text-sm font-bold text-slate-900 line-clamp-2">
-                    {isInvoice
-                      ? (doc as PeriodInvoice).customerName || '—'
-                      : (doc as PeriodPurchase).providerName || '—'}
-                  </p>
+                  {doc.thirdParty ? (
+                    <div className="text-sm font-bold text-slate-900">
+                      <ThirdPartyLink thirdParty={doc.thirdParty} />
+                      {doc.thirdParty.identification && doc.thirdParty.name && (
+                        <p className="text-[11px] font-mono font-semibold text-slate-400 mt-0.5">
+                          {doc.thirdParty.identification}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm font-bold text-slate-900 line-clamp-2">
+                      {isInvoice
+                        ? (doc as PeriodInvoice).customerName || '—'
+                        : (doc as PeriodPurchase).providerName || '—'}
+                    </p>
+                  )}
                 </Row>
 
                 <Row label="Categoría" icon={<Tag size={14} />}>

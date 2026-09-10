@@ -14,6 +14,7 @@ import type { LoggedInUser } from '../App';
 import { CategoryBadge } from '../components/CategoryBadge';
 import { Skeleton,SkeletonCard } from '../components/Skeleton';
 import { StatusBadge } from '../components/StatusBadge';
+import { ThirdPartyLink } from '../components/ThirdPartyLink';
 import { Pagination } from '../components/Pagination';
 import { TransactionDetailDrawer } from '../components/TransactionDetailDrawer';
 import { TransactionFilters, type TxFilters, type TxTypeFilter, type TxStatusFilter, type TxSourceFilter, type TxRecordFilter } from '../components/TransactionFilters';
@@ -40,6 +41,8 @@ async function exportXLSX(transactions: Transaction[], formatCurrency: (n: numbe
     { header: 'Monto',       key: 'amount',      width: 20 },
     { header: 'Estado',      key: 'status',      width: 14 },
     { header: 'Referencia',  key: 'reference',   width: 20 },
+    { header: 'Tercero',     key: 'thirdParty',  width: 38 },
+    { header: 'NIT',         key: 'thirdPartyId', width: 16 },
     { header: 'Origen',      key: 'source',      width: 12 },
   ];
 
@@ -56,6 +59,8 @@ async function exportXLSX(transactions: Transaction[], formatCurrency: (n: numbe
       amount: formatCurrency(tx.amount),
       status: tx.status,
       reference: tx.reference ?? '',
+      thirdParty: tx.thirdParty?.name ?? '',
+      thirdPartyId: tx.thirdParty?.identification ?? '',
       source: tx.isProjection ? 'Proyección' : tx.source,
     });
   });
@@ -340,20 +345,20 @@ export function MovementsView({
           <table className="w-full text-left">
             <thead>
               <tr className="bg-slate-50/50 border-b border-slate-100">
-                {['FECHA', 'DESCRIPCIÓN', 'CATEGORÍA', 'TIPO', 'MONTO', 'ESTADO'].map(h => (
-                  <th key={h} className={cn("px-3 sm:px-8 py-3 sm:py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest", h === 'CATEGORÍA' && 'hidden sm:table-cell', h === 'TIPO' && 'text-center', (h === 'MONTO' || h === 'ESTADO') && 'text-right')}>{h}</th>
+                {['FECHA', 'DESCRIPCIÓN', 'TERCERO', 'CATEGORÍA', 'TIPO', 'MONTO', 'ESTADO'].map(h => (
+                  <th key={h} className={cn("px-3 sm:px-8 py-3 sm:py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest", h === 'CATEGORÍA' && 'hidden sm:table-cell', h === 'TERCERO' && 'hidden lg:table-cell', h === 'TIPO' && 'text-center', (h === 'MONTO' || h === 'ESTADO') && 'text-right')}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {isFetching && transactions.length === 0
                 ? Array.from({ length: 5 }).map((_, i) => (
-                    <tr key={i}><td colSpan={6} className="px-8 py-4"><Skeleton className="h-6 w-full" /></td></tr>
+                    <tr key={i}><td colSpan={7} className="px-8 py-4"><Skeleton className="h-6 w-full" /></td></tr>
                   ))
                 : transactions.length === 0
                   ? (
                     <tr>
-                      <td colSpan={6}>
+                      <td colSpan={7}>
                         {search || activeFilterCount > 0 ? (
                           <EmptyState
                             icon={Search}
@@ -378,6 +383,9 @@ export function MovementsView({
                       <p className="text-sm font-bold text-slate-900">{tx.description}</p>
                       {tx.reference && <p className="text-[10px] font-mono font-bold text-slate-400 mt-0.5 tracking-wider" title="Referencia">{tx.reference}</p>}
                       {tx.detail && <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-2 leading-snug">{tx.detail}</p>}
+                    </td>
+                    <td className="hidden lg:table-cell px-3 sm:px-8 py-3 sm:py-6 max-w-[220px]">
+                      <ThirdPartyLink thirdParty={tx.thirdParty} compact />
                     </td>
                     <td className="hidden sm:table-cell px-3 sm:px-8 py-3 sm:py-6">
                       <CategoryBadge category={tx.category} />

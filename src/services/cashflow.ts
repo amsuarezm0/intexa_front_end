@@ -1,3 +1,4 @@
+import type { ThirdParty } from './customers';
 import { api } from '../lib/api';
 import type { Transaction } from './transactions';
 
@@ -31,6 +32,7 @@ export interface Installment {
 }
 
 export interface PeriodInvoice {
+  thirdParty?: ThirdParty;
   id: string;
   date: string;
   dueDate: string;
@@ -47,6 +49,7 @@ export interface PeriodInvoice {
 }
 
 export interface PeriodPurchase {
+  thirdParty?: ThirdParty;
   id: string;
   date: string;
   dueDate: string;

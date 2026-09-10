@@ -1,3 +1,4 @@
+import type { ThirdParty } from './customers';
 import { api } from '../lib/api';
 
 export interface NotificationItem {
@@ -8,6 +9,7 @@ export interface NotificationItem {
   date: string;
   daysOverdue: number; // negative = days until due
   urgency: 'overdue' | 'due-soon' | 'upcoming';
+  thirdParty?: ThirdParty;
 }
 
 export interface NotificationSummary {

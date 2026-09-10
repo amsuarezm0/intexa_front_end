@@ -1,6 +1,7 @@
 import { cn } from '../lib/utils';
 import { useSettings } from '../contexts/SettingsContext';
 import type { ProjectionAlert } from '../services';
+import { ThirdPartyLink } from './ThirdPartyLink';
 
 interface Props {
   type:       'income' | 'expense';
@@ -47,6 +48,10 @@ export function ProjectionTable({ type, rows, onRowClick }: Props) {
           >
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-slate-900 truncate">{row.title}</p>
+              {/* Who the money is owed to or by — the reference alone doesn't say. */}
+              {row.thirdParty
+                ? <ThirdPartyLink thirdParty={row.thirdParty} compact className="text-xs" />
+                : row.description && <p className="text-xs text-slate-500 truncate">{row.description}</p>}
               <p className="text-xs text-slate-400 truncate">{row.dueDate}</p>
             </div>
             <span className={cn('text-sm font-extrabold shrink-0', colorText)}

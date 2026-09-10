@@ -1,3 +1,4 @@
+import type { ThirdParty } from './customers';
 import { api } from '../lib/api';
 
 export interface StatCard {
@@ -28,6 +29,7 @@ export interface DashboardAlert {
   description: string;
   amount: number;
   dueDate: string;
+  thirdParty?: ThirdParty;
 }
 
 export interface WeeklyComparison {

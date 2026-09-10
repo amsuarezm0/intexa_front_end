@@ -20,6 +20,7 @@ import { useEffect,useRef,useState,type ReactNode } from 'react';
 import type { LoggedInUser } from '../App';
 import { BrandLogo } from '../components/BrandLogo';
 import { SyncResultModal } from '../components/SyncResultModal';
+import { ThirdPartyLink } from '../components/ThirdPartyLink';
 import { useSettings } from '../contexts/SettingsContext';
 import { canWrite, roleLabel } from '../lib/roles';
 import { cn } from '../lib/utils';
@@ -467,6 +468,9 @@ function NotifItem({ item, formatCurrency }: { item: NotificationItem; formatCur
       <span className={cn('mt-1.5 w-2 h-2 rounded-full shrink-0', style.dot)} />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-bold text-slate-900 truncate">{item.title}</p>
+        {item.thirdParty && (
+          <ThirdPartyLink thirdParty={item.thirdParty} compact className="text-xs mt-0.5" />
+        )}
         <p className="text-xs text-slate-400 mt-0.5">{item.category}</p>
       </div>
       <div className="text-right shrink-0">

@@ -16,6 +16,7 @@ export interface CashFlowAlert {
   description: string;
   amount: number;
   dueDate: string;
+  thirdParty?: ThirdParty;
 }
 
 export interface CashFlowSummary {

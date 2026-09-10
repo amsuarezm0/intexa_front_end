@@ -1,3 +1,4 @@
+import type { ThirdParty } from './customers';
 import { api } from '../lib/api';
 import type { Transaction } from './transactions';
 
@@ -15,6 +16,7 @@ export interface ProjectionAlert {
   dueDate: string;
   amount: number;
   color: string;
+  thirdParty?: ThirdParty;
 }
 
 export interface ProjectionSummary {

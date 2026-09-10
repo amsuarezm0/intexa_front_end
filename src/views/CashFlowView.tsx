@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { TransactionFilters, type TxFilters } from '../components/TransactionFilters';
 import { useCallback,useEffect,useMemo,useState } from 'react';
 import { EmptyState } from '../components/EmptyState';
+import { ThirdPartyLink } from '../components/ThirdPartyLink';
 import { ErrorState } from '../components/ErrorState';
 import { Skeleton,SkeletonCard } from '../components/Skeleton';
 import { StatusBadge } from '../components/StatusBadge';
@@ -558,7 +559,9 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
                   }
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-slate-900 truncate">{alert.description}</p>
+                  {alert.thirdParty
+                    ? <ThirdPartyLink thirdParty={alert.thirdParty} className="text-sm font-bold" />
+                    : <p className="text-sm font-bold text-slate-900 truncate">{alert.description}</p>}
                   <p className="text-xs font-semibold text-slate-400">{alert.title} · {alert.dueDate}</p>
                 </div>
                 <p className={cn("text-sm font-black shrink-0",

@@ -10,6 +10,8 @@ interface Props {
   preferredType?: CustomerType;
   label?: string;
   disabled?: boolean;
+  /** `compact` is the filter-bar form: no label, a chip-sized control. */
+  compact?: boolean;
 }
 
 const TABS: { value: CustomerType | 'all'; label: string }[] = [
@@ -39,10 +41,12 @@ function toThirdParty(c: Customer): ThirdParty {
  * classifies plenty of real suppliers as "Cliente", so locking the list to one
  * type would make legitimate third parties unselectable.
  */
-export function ThirdPartyPicker({ value, onChange, preferredType, label = 'Tercero', disabled }: Props) {
+export function ThirdPartyPicker({ value, onChange, preferredType, label = 'Tercero', disabled, compact }: Props) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [type, setType] = useState<CustomerType | 'all'>(preferredType ?? 'Cliente');
+  // A form usually knows which side it wants; a filter does not, so it opens
+  // on every third party rather than hiding suppliers behind a tab.
+  const [type, setType] = useState<CustomerType | 'all'>(preferredType ?? (compact ? 'all' : 'Cliente'));
   const [results, setResults] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
@@ -84,51 +88,62 @@ export function ThirdPartyPicker({ value, onChange, preferredType, label = 'Terc
     return value.name || value.identification || '';
   }, [value]);
 
+  const iconSize = compact ? 14 : 16;
+
   return (
-    <div className="relative" ref={boxRef}>
-      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-        {label} <span className="text-slate-300 normal-case tracking-normal font-semibold">· opcional</span>
-      </label>
+    <div className={cn('relative', compact && 'w-56')} ref={boxRef}>
+      {!compact && (
+        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+          {label} <span className="text-slate-300 normal-case tracking-normal font-semibold">· opcional</span>
+        </label>
+      )}
 
       <button
         type="button"
         disabled={disabled}
         onClick={() => setOpen(o => !o)}
+        title={value ? `${selectedLabel} · ${value.identification ?? ''}` : undefined}
         className={cn(
-          'w-full flex items-center gap-2 px-4 py-3 border rounded-2xl text-sm text-left transition-colors outline-none',
+          'w-full flex items-center gap-2 border text-left transition-colors outline-none',
+          compact
+            ? 'px-3 py-1.5 rounded-lg text-xs bg-slate-50'
+            : 'px-4 py-3 rounded-2xl text-sm',
           'border-slate-200 hover:border-slate-300 focus:border-brand-primary disabled:opacity-50',
           open && 'border-brand-primary',
+          compact && value && 'bg-brand-primary/5 border-brand-primary/40',
         )}
       >
         {value ? (
           <>
             {value.type === 'Proveedor'
-              ? <User size={16} className="text-slate-400 shrink-0" />
-              : <Building2 size={16} className="text-slate-400 shrink-0" />}
-            <span className="flex-1 min-w-0 truncate font-semibold text-slate-900">{selectedLabel}</span>
-            <span className="text-[11px] font-mono text-slate-400 shrink-0">{value.identification}</span>
+              ? <User size={iconSize} className="text-slate-400 shrink-0" />
+              : <Building2 size={iconSize} className="text-slate-400 shrink-0" />}
+            <span className={cn('flex-1 min-w-0 truncate font-semibold text-slate-900', compact && 'font-bold')}>{selectedLabel}</span>
+            {!compact && <span className="text-[11px] font-mono text-slate-400 shrink-0">{value.identification}</span>}
             <span
               role="button"
               tabIndex={0}
               aria-label="Quitar tercero"
               onClick={e => { e.stopPropagation(); onChange(null); }}
               onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); onChange(null); } }}
-              className="p-1 rounded-lg text-slate-400 hover:text-brand-danger hover:bg-slate-100 shrink-0"
+              className={cn('rounded-lg text-slate-400 hover:text-brand-danger hover:bg-slate-100 shrink-0', compact ? 'p-0.5' : 'p-1')}
             >
-              <X size={14} />
+              <X size={compact ? 12 : 14} />
             </span>
           </>
         ) : (
           <>
-            <Search size={16} className="text-slate-400 shrink-0" />
-            <span className="flex-1 text-slate-400">Buscar cliente o proveedor...</span>
-            <ChevronDown size={16} className={cn('text-slate-400 transition-transform shrink-0', open && 'rotate-180')} />
+            <Search size={iconSize} className="text-slate-400 shrink-0" />
+            <span className={cn('flex-1 truncate', compact ? 'text-slate-500 font-bold' : 'text-slate-400')}>
+              {compact ? 'Cliente o proveedor' : 'Buscar cliente o proveedor...'}
+            </span>
+            <ChevronDown size={iconSize} className={cn('text-slate-400 transition-transform shrink-0', open && 'rotate-180')} />
           </>
         )}
       </button>
 
       {open && (
-        <div className="absolute z-50 left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
+        <div className={cn('absolute z-50 left-0 mt-2 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden', compact ? 'w-72' : 'right-0')}>
           <div className="p-3 border-b border-slate-100 space-y-2">
             <div className="relative">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />

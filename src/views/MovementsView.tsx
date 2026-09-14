@@ -90,7 +90,7 @@ export function MovementsView({
   // The list is fully described by the URL: a filtered page — or an open
   // movement — can be copied out of the address bar and shared as-is.
   const [query, setQuery] = useQueryState({
-    q: '', page: '1', type: '', status: '', source: '', record: '', from: '', to: '', tx: '',
+    q: '', page: '1', type: '', status: '', source: '', record: '', from: '', to: '', tp: '', tx: '',
   });
   const page = toInt(query.page, 1);
   const search = query.q;
@@ -101,8 +101,9 @@ export function MovementsView({
     record: query.record as TxRecordFilter,
     dateFrom: query.from,
     dateTo:   query.to,
+    thirdParty: query.tp,
   }), [query]);
-  const { type: typeFilter, status: statusFilter, source: sourceFilter, record: recordFilter, dateFrom = '', dateTo = '' } = filters;
+  const { type: typeFilter, status: statusFilter, source: sourceFilter, record: recordFilter, dateFrom = '', dateTo = '', thirdParty: partyFilter = '' } = filters;
 
   const [searchInput, setSearchInput] = useState(search);
   const [showFilters, setShowFilters] = useState(false);
@@ -128,7 +129,7 @@ export function MovementsView({
     else setIsFetching(true);
     setError('');
     try {
-      const listRes = await transactionsService.list({ page, limit: 10, search, type: typeFilter || undefined, status: statusFilter || undefined, source: sourceFilter || undefined, isProjection: recordFilter === 'Proyección' ? true : recordFilter === 'Movimiento' ? false : undefined, dateFrom: dateFrom || undefined, dateTo: dateTo || undefined });
+      const listRes = await transactionsService.list({ page, limit: 10, search, type: typeFilter || undefined, status: statusFilter || undefined, source: sourceFilter || undefined, isProjection: recordFilter === 'Proyección' ? true : recordFilter === 'Movimiento' ? false : undefined, dateFrom: dateFrom || undefined, dateTo: dateTo || undefined, thirdParty: partyFilter || undefined });
       setTransactions(listRes.data);
       setTotal(listRes.total);
       setTotalPages(listRes.totalPages);
@@ -183,6 +184,7 @@ export function MovementsView({
         isProjection: recordFilter === 'Proyección' ? true : recordFilter === 'Movimiento' ? false : undefined,
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
+        thirdParty: partyFilter || undefined,
       });
       await exportXLSX(res.data, formatCurrency);
     } catch (err: any) {
@@ -192,9 +194,9 @@ export function MovementsView({
     }
   };
 
-  const activeFilterCount = (typeFilter ? 1 : 0) + (statusFilter ? 1 : 0) + (sourceFilter ? 1 : 0) + (recordFilter ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
+  const activeFilterCount = (typeFilter ? 1 : 0) + (statusFilter ? 1 : 0) + (sourceFilter ? 1 : 0) + (recordFilter ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0) + (partyFilter ? 1 : 0);
 
-  const clearFilters = () => setQuery({ type: '', status: '', source: '', record: '', from: '', to: '', page: '1' });
+  const clearFilters = () => setQuery({ type: '', status: '', source: '', record: '', from: '', to: '', tp: '', page: '1' });
   const handleFilterChange = (next: Partial<TxFilters>) => setQuery({
     ...(next.type   !== undefined && { type:   next.type }),
     ...(next.status !== undefined && { status: next.status }),
@@ -202,6 +204,7 @@ export function MovementsView({
     ...(next.record !== undefined && { record: next.record }),
     ...(next.dateFrom !== undefined && { from: next.dateFrom }),
     ...(next.dateTo   !== undefined && { to:   next.dateTo }),
+    ...(next.thirdParty !== undefined && { tp: next.thirdParty }),
     page: '1',
   });
 
@@ -364,7 +367,7 @@ export function MovementsView({
                             icon={Search}
                             title="Sin resultados"
                             hint="Ningún movimiento coincide con la búsqueda y los filtros aplicados."
-                            action={{ label: 'Limpiar búsqueda y filtros', onClick: () => { setSearchInput(''); setQuery({ q: '', type: '', status: '', source: '', record: '', from: '', to: '', page: '1' }); } }}
+                            action={{ label: 'Limpiar búsqueda y filtros', onClick: () => { setSearchInput(''); setQuery({ q: '', type: '', status: '', source: '', record: '', from: '', to: '', tp: '', page: '1' }); } }}
                           />
                         ) : (
                           <EmptyState

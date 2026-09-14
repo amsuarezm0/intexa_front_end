@@ -13,7 +13,7 @@ import { useSettings } from '../contexts/SettingsContext';
 import { toInt,useQueryState } from '../hooks/useQueryState';
 import { canWrite, canWriteProjections } from '../lib/roles';
 import { cn } from '../lib/utils';
-import { cashFlowService,projectionsService,type CashFlowSummary,type PeriodData,type PeriodInvoice,type PeriodPurchase } from '../services';
+import { cashFlowService,projectionsService,type CashFlowSummary,type PeriodData,type PeriodInvoice,type PeriodPurchase,type ThirdParty } from '../services';
 import { DocumentDetailDrawer } from '../components/DocumentDetailDrawer';
 import type { Transaction } from '../services/transactions';
 
@@ -58,6 +58,7 @@ interface Movement {
   source: string;
   isProjection: boolean;
   reference?: string;
+  thirdParty?: ThirdParty;
   rawTx?: Transaction;
   rawDoc?: RawDoc;
 }
@@ -67,20 +68,20 @@ function toMovements(txs: Transaction[], invs: PeriodInvoice[], purs: PeriodPurc
     ...txs.map(tx => ({
       id: tx.id, date: tx.date, description: tx.description, detail: tx.detail || undefined,
       category: tx.category, type: tx.type, amount: tx.amount, status: tx.status, source: tx.source,
-      isProjection: tx.isProjection, reference: tx.reference, rawTx: tx,
+      isProjection: tx.isProjection, reference: tx.reference, thirdParty: tx.thirdParty, rawTx: tx,
     })),
     ...invs.map(inv => ({
       id: inv.id, date: inv.dueDate || inv.date,
       description: inv.reference, detail: inv.detail || undefined,
       category: inv.category, type: 'Ingreso' as const, amount: inv.balance, status: inv.status,
-      source: inv.source, isProjection: false,
+      source: inv.source, isProjection: false, thirdParty: inv.thirdParty,
       rawDoc: { ...inv, docType: 'FV' as const },
     })),
     ...purs.map(pur => ({
       id: pur.id, date: pur.dueDate || pur.date,
       description: pur.reference, detail: pur.detail || undefined,
       category: pur.category, type: 'Egreso' as const, amount: pur.balance, status: pur.status,
-      source: pur.source, isProjection: false,
+      source: pur.source, isProjection: false, thirdParty: pur.thirdParty,
       rawDoc: { ...pur, docType: 'FC' as const },
     })),
   ];
@@ -213,7 +214,7 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
   // Period, the date being viewed and the movement filters live in the URL, so
   // "mira el flujo de esta semana" is a link rather than a list of clicks.
   const [query, setQuery] = useQueryState({
-    period: 'week', date: '', type: '', status: '', source: '', record: '', page: '1',
+    period: 'week', date: '', type: '', status: '', source: '', record: '', tp: '', page: '1',
   });
   const period = (['day', 'week', 'month'] as const).includes(query.period as Period)
     ? query.period as Period
@@ -230,9 +231,10 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
     status: query.status as TxFilters['status'],
     source: query.source as TxFilters['source'],
     record: query.record as TxFilters['record'],
+    thirdParty: query.tp,
   }), [query]);
   const TX_PAGE_SIZE = 10;
-  const { type: filterType, status: filterStatus, source: filterSource, record: filterRecord } = filters;
+  const { type: filterType, status: filterStatus, source: filterSource, record: filterRecord, thirdParty: filterParty = '' } = filters;
   const [selectedTx, setSelectedTx]   = useState<Transaction | null>(null);
   const [selectedDoc, setSelectedDoc] = useState<RawDoc | null>(null);
 
@@ -286,11 +288,15 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
       if (filterSource && m.source !== filterSource) return false;
       if (filterRecord === 'Movimiento'  && m.isProjection)  return false;
       if (filterRecord === 'Proyección'  && !m.isProjection) return false;
+      // Matched on the identification alone, so every branch office of the
+      // same NIT stays in — the period payload is already in the browser, so
+      // this filters here rather than round-tripping.
+      if (filterParty && m.thirdParty?.identification !== filterParty) return false;
       return true;
     });
-  }, [allMovements, filterType, filterStatus, filterSource, filterRecord]);
+  }, [allMovements, filterType, filterStatus, filterSource, filterRecord, filterParty]);
 
-  const activeFilters = (filterType ? 1 : 0) + (filterStatus ? 1 : 0) + (filterSource ? 1 : 0) + (filterRecord ? 1 : 0);
+  const activeFilters = (filterType ? 1 : 0) + (filterStatus ? 1 : 0) + (filterSource ? 1 : 0) + (filterRecord ? 1 : 0) + (filterParty ? 1 : 0);
 
   const periodAlerts = summary.alerts;
 
@@ -326,13 +332,14 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
 
   const todayKey = dateKey(new Date());
 
-  function clearFilters() { setQuery({ type: '', status: '', source: '', record: '', page: '1' }); }
+  function clearFilters() { setQuery({ type: '', status: '', source: '', record: '', tp: '', page: '1' }); }
   function handleFilterChange(next: Partial<TxFilters>) {
     setQuery({
       ...(next.type   !== undefined && { type:   next.type }),
       ...(next.status !== undefined && { status: next.status }),
       ...(next.source !== undefined && { source: next.source }),
       ...(next.record !== undefined && { record: next.record }),
+      ...(next.thirdParty !== undefined && { tp: next.thirdParty }),
       page: '1',
     });
   }
@@ -625,10 +632,11 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
           <table className="w-full text-left">
             <thead>
               <tr className="bg-slate-50/50 border-b border-slate-100">
-                {['FECHA', 'DESCRIPCIÓN', 'CATEGORÍA', 'TIPO', 'MONTO', 'ESTADO', 'ORIGEN'].map(h => (
+                {['FECHA', 'DESCRIPCIÓN', 'TERCERO', 'CATEGORÍA', 'TIPO', 'MONTO', 'ESTADO', 'ORIGEN'].map(h => (
                   <th key={h} className={cn(
                     "px-3 sm:px-8 py-3 sm:py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest",
                     (h === 'CATEGORÍA' || h === 'ORIGEN') && 'hidden sm:table-cell',
+                    h === 'TERCERO' && 'hidden lg:table-cell',
                     h === 'TIPO' && 'text-center',
                     (h === 'MONTO' || h === 'ESTADO') && 'text-right',
                   )}>{h}</th>
@@ -638,7 +646,7 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
             <tbody className="divide-y divide-slate-50">
               {filteredTxs.length === 0 ? (
                 <tr>
-                  <td colSpan={7}>
+                  <td colSpan={8}>
                     {allMovements.length === 0 ? (
                       <EmptyState
                         title={`Sin movimientos en ${title.toLowerCase()}`}
@@ -665,6 +673,9 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
                     <p className="text-sm font-bold text-slate-900 line-clamp-1">{m.description}</p>
                     {m.detail && <p className="text-[10px] font-semibold text-slate-500 mt-0.5 line-clamp-1">{m.detail}</p>}
                     {m.reference && <p className="text-[10px] font-bold text-slate-400 mt-0.5">{m.reference}</p>}
+                  </td>
+                  <td className="hidden lg:table-cell px-3 sm:px-8 py-3 sm:py-6 max-w-[220px]">
+                    <ThirdPartyLink thirdParty={m.thirdParty} compact />
                   </td>
                   <td className="hidden sm:table-cell px-3 sm:px-8 py-3 sm:py-6">
                     <span className="text-xs font-bold px-3 py-1 bg-slate-100 text-slate-600 rounded-lg">{m.category}</span>

@@ -64,7 +64,7 @@ export interface CreateTransactionInput {
 }
 
 export const transactionsService = {
-  list: (params?: { page?: number; limit?: number; search?: string; type?: string; status?: string; dateFrom?: string; dateTo?: string; source?: string; isProjection?: boolean }) => {
+  list: (params?: { page?: number; limit?: number; search?: string; type?: string; status?: string; dateFrom?: string; dateTo?: string; source?: string; isProjection?: boolean; thirdParty?: string }) => {
     const qs = new URLSearchParams();
     if (params?.page) qs.set('page', String(params.page));
     if (params?.limit) qs.set('limit', String(params.limit));
@@ -75,6 +75,8 @@ export const transactionsService = {
     if (params?.dateTo) qs.set('dateTo', params.dateTo);
     if (params?.source) qs.set('source', params.source);
     if (params?.isProjection !== undefined) qs.set('isProjection', String(params.isProjection));
+    // The identification of the third party; the server matches every branch office.
+    if (params?.thirdParty) qs.set('thirdParty', params.thirdParty);
     const query = qs.toString();
     return api.get<TransactionListResponse>(`/transactions${query ? `?${query}` : ''}`);
   },

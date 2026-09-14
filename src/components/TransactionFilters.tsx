@@ -1,5 +1,8 @@
 import { X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
+import { useEffect, useState } from 'react';
+import { ThirdPartyPicker } from './ThirdPartyPicker';
+import { customersService, type ThirdParty } from '../services';
 import { cn } from '../lib/utils';
 
 export type TxTypeFilter   = '' | 'Ingreso' | 'Egreso';
@@ -14,6 +17,9 @@ export interface TxFilters {
   record: TxRecordFilter;
   dateFrom?: string;
   dateTo?:   string;
+  /** Identification (NIT) of the third party, matched across branch offices.
+   *  Only the key travels, so the filter survives in a shared URL. */
+  thirdParty?: string;
 }
 
 interface Props {
@@ -44,12 +50,40 @@ export function TransactionFilters({ show, filters, showDateFilter, showPartialS
   const statuses: TxStatusFilter[] = showPartialStatus
     ? ['Completado', 'Parcial', 'Pendiente', 'Anulado']
     : ['Completado', 'Pendiente', 'Anulado'];
-  const { type, status, source, record, dateFrom = '', dateTo = '' } = filters;
+  const { type, status, source, record, dateFrom = '', dateTo = '', thirdParty = '' } = filters;
 
   const activeCount =
     (type   ? 1 : 0) + (status ? 1 : 0) +
     (source ? 1 : 0) + (record ? 1 : 0) +
-    (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
+    (dateFrom ? 1 : 0) + (dateTo ? 1 : 0) +
+    (thirdParty ? 1 : 0);
+
+  // Only the identification is in the URL, so a link opened cold knows the NIT
+  // and not the name. Resolve it once so the control and the chip read as a
+  // name; an identification that matches nothing still shows as itself.
+  const [party, setParty] = useState<ThirdParty | null>(null);
+  useEffect(() => {
+    if (!thirdParty) { setParty(null); return; }
+    if (party?.identification === thirdParty) return;
+    let cancelled = false;
+    setParty({ identification: thirdParty });
+    customersService.list({ search: thirdParty, type: 'all', limit: 5 })
+      .then(res => {
+        const match = res.data.find(c => c.identification === thirdParty);
+        if (!cancelled && match) {
+          setParty({
+            customerId: match.id, identification: match.identification,
+            branchOffice: match.branchOffice, siigoId: match.siigoId,
+            name: match.name, commercialName: match.commercialName, type: match.type,
+          });
+        }
+      })
+      .catch(() => { /* the NIT alone still filters */ });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [thirdParty]);
+
+  const partyLabel = party?.name || thirdParty;
 
   const toggle = <K extends keyof TxFilters>(key: K, val: TxFilters[K]) =>
     onChange({ [key]: filters[key] === val ? '' : val });
@@ -120,6 +154,16 @@ export function TransactionFilters({ show, filters, showDateFilter, showPartialS
                 </div>
               </div>
 
+              {/* Tercero */}
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tercero</span>
+                <ThirdPartyPicker
+                  compact
+                  value={party}
+                  onChange={tp => onChange({ thirdParty: tp?.identification ?? '' })}
+                />
+              </div>
+
               {/* Fecha (optional) */}
               {showDateFilter && (
                 <div className="flex items-center gap-3">
@@ -171,6 +215,11 @@ export function TransactionFilters({ show, filters, showDateFilter, showPartialS
               {record}
             </Chip>
           )}
+          {thirdParty && (
+            <Chip color="primary" onRemove={() => onChange({ thirdParty: '' })} title={partyLabel}>
+              {partyLabel}
+            </Chip>
+          )}
           {(dateFrom || dateTo) && (
             <Chip color="slate" onRemove={() => onChange({ dateFrom: '', dateTo: '' })}>
               {dateFrom || '…'} → {dateTo || '…'}
@@ -192,11 +241,11 @@ const chipClass: Record<ChipColor, string> = {
   slate:   'bg-slate-100 text-slate-500',
 };
 
-function Chip({ color, onRemove, children }: { color: ChipColor; onRemove: () => void; children: React.ReactNode }) {
+function Chip({ color, onRemove, title, children }: { color: ChipColor; onRemove: () => void; title?: string; children: React.ReactNode }) {
   return (
-    <span className={cn('flex items-center gap-1.5 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest', chipClass[color])}>
-      {children}
-      <button onClick={onRemove}><X size={10} /></button>
+    <span title={title} className={cn('flex items-center gap-1.5 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest max-w-[240px]', chipClass[color])}>
+      <span className="truncate">{children}</span>
+      <button onClick={onRemove} className="shrink-0"><X size={10} /></button>
     </span>
   );
 }

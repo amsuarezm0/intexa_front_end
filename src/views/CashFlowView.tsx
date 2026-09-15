@@ -34,8 +34,12 @@ function dateKey(d: Date) {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
 
-function effDate(doc: { date: string; dueDate: string }): Date {
-  return parseTxDate(doc.dueDate || doc.date);
+// The date a document is actually expected on: the agreed payment date when one
+// was set, its own due date otherwise. The calendar, the chart and the table all
+// read it from here, so a document that was renegotiated sits on the day the
+// money is due rather than the day Siigo first asked for it.
+function effDate(doc: { date: string; dueDate: string; effectiveDueDate?: string }): Date {
+  return parseTxDate(doc.effectiveDueDate || doc.dueDate || doc.date);
 }
 
 function toDateStr(d: Date): string {
@@ -71,14 +75,14 @@ function toMovements(txs: Transaction[], invs: PeriodInvoice[], purs: PeriodPurc
       isProjection: tx.isProjection, reference: tx.reference, thirdParty: tx.thirdParty, rawTx: tx,
     })),
     ...invs.map(inv => ({
-      id: inv.id, date: inv.dueDate || inv.date,
+      id: inv.id, date: inv.effectiveDueDate || inv.dueDate || inv.date,
       description: inv.reference, detail: inv.detail || undefined,
       category: inv.category, type: 'Ingreso' as const, amount: inv.balance, status: inv.status,
       source: inv.source, isProjection: false, thirdParty: inv.thirdParty,
       rawDoc: { ...inv, docType: 'FV' as const },
     })),
     ...purs.map(pur => ({
-      id: pur.id, date: pur.dueDate || pur.date,
+      id: pur.id, date: pur.effectiveDueDate || pur.dueDate || pur.date,
       description: pur.reference, detail: pur.detail || undefined,
       category: pur.category, type: 'Egreso' as const, amount: pur.balance, status: pur.status,
       source: pur.source, isProjection: false, thirdParty: pur.thirdParty,
@@ -113,7 +117,7 @@ function mergePoint(base: ReturnType<typeof sumTxs>, pendInc: number, pendExp: n
 // pendingFlows spreads a document's unpaid amount across its installment due
 // dates (dateKey → amount). Without a schedule it falls back to the whole
 // balance on the effective due date — matching the pre-installment behavior.
-function pendingFlows(doc: { pendingInstallments?: { dueDate: string; value: number }[]; balance: number; date: string; dueDate: string }): { key: string; amount: number }[] {
+function pendingFlows(doc: { pendingInstallments?: { dueDate: string; value: number }[]; balance: number; date: string; dueDate: string; effectiveDueDate?: string }): { key: string; amount: number }[] {
   const sched = doc.pendingInstallments;
   if (sched && sched.length) {
     return sched.map(s => ({ key: dateKey(parseTxDate(s.dueDate)), amount: s.value }));
@@ -121,7 +125,7 @@ function pendingFlows(doc: { pendingInstallments?: { dueDate: string; value: num
   return [{ key: dateKey(effDate(doc)), amount: doc.balance }];
 }
 
-function pendingByKey(docs: { pendingInstallments?: { dueDate: string; value: number }[]; balance: number; date: string; dueDate: string }[]): Record<string, number> {
+function pendingByKey(docs: { pendingInstallments?: { dueDate: string; value: number }[]; balance: number; date: string; dueDate: string; effectiveDueDate?: string }[]): Record<string, number> {
   const out: Record<string, number> = {};
   for (const doc of docs) {
     for (const f of pendingFlows(doc)) out[f.key] = (out[f.key] ?? 0) + f.amount;

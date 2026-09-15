@@ -5,7 +5,10 @@ import type { ThirdParty } from '../services';
 
 interface Props {
   thirdParty?: ThirdParty | null;
-  /** `compact` is the table form: one line, no icon. */
+  /** `compact` is the table form: no icon, and the name wraps to two lines
+   *  rather than being cut at one — legal names run long ("Comercializadora
+   *  Internacional de Textiles S.A.S."), and a single truncated line hides the
+   *  part that tells two third parties apart. */
   compact?: boolean;
   className?: string;
 }
@@ -29,11 +32,16 @@ export function ThirdPartyLink({ thirdParty, compact, className }: Props) {
     : `Tercero ${thirdParty.identification} — aún no sincronizado en Clientes`;
 
   const body = (
-    <span className={cn('inline-flex items-center gap-1.5 min-w-0', className)}>
+    <span className={cn('inline-flex gap-1.5 min-w-0', compact ? 'items-start' : 'items-center', className)}>
       {!compact && (thirdParty.type === 'Proveedor'
         ? <User size={14} className="text-slate-400 shrink-0" />
         : <Building2 size={14} className="text-slate-400 shrink-0" />)}
-      <span className={cn('truncate', !thirdParty.name && 'font-mono text-slate-400')}>{label}</span>
+      <span className={cn(
+        'min-w-0',
+        // Two lines, then ellipsis — the full name is always on the tooltip.
+        compact ? 'line-clamp-2 break-words leading-snug' : 'truncate',
+        !thirdParty.name && 'font-mono text-slate-400',
+      )}>{label}</span>
     </span>
   );
 

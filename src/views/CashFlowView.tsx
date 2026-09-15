@@ -678,8 +678,10 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
                     {m.detail && <p className="text-[10px] font-semibold text-slate-500 mt-0.5 line-clamp-1">{m.detail}</p>}
                     {m.reference && <p className="text-[10px] font-bold text-slate-400 mt-0.5">{m.reference}</p>}
                   </td>
-                  <td className="hidden lg:table-cell px-3 sm:px-8 py-3 sm:py-6 max-w-[220px]">
-                    <ThirdPartyLink thirdParty={m.thirdParty} compact />
+                  <td className="hidden lg:table-cell px-3 sm:px-8 py-3 sm:py-6">
+                    <div className="max-w-[220px]">
+                      <ThirdPartyLink thirdParty={m.thirdParty} compact />
+                    </div>
                   </td>
                   <td className="hidden sm:table-cell px-3 sm:px-8 py-3 sm:py-6">
                     <span className="text-xs font-bold px-3 py-1 bg-slate-100 text-slate-600 rounded-lg">{m.category}</span>

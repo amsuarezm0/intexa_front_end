@@ -387,8 +387,10 @@ export function MovementsView({
                       {tx.reference && <p className="text-[10px] font-mono font-bold text-slate-400 mt-0.5 tracking-wider" title="Referencia">{tx.reference}</p>}
                       {tx.detail && <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-2 leading-snug">{tx.detail}</p>}
                     </td>
-                    <td className="hidden lg:table-cell px-3 sm:px-8 py-3 sm:py-6 max-w-[220px]">
-                      <ThirdPartyLink thirdParty={tx.thirdParty} compact />
+                    <td className="hidden lg:table-cell px-3 sm:px-8 py-3 sm:py-6">
+                      <div className="max-w-[220px]">
+                        <ThirdPartyLink thirdParty={tx.thirdParty} compact />
+                      </div>
                     </td>
                     <td className="hidden sm:table-cell px-3 sm:px-8 py-3 sm:py-6">
                       <CategoryBadge category={tx.category} />

@@ -34,6 +34,13 @@ function dateKey(d: Date) {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
 
+// The day a movement lands on. A movement sits on its own date until a payment
+// date is agreed for it; from then on the agreed date is when the money moves,
+// so that is where the calendar and the chart place it.
+function txDate(tx: Transaction): Date {
+  return parseTxDate(tx.secondaryDueDate || tx.date);
+}
+
 // The date a document is actually expected on: the agreed payment date when one
 // was set, its own due date otherwise. The calendar, the chart and the table all
 // read it from here, so a document that was renegotiated sits on the day the
@@ -70,7 +77,7 @@ interface Movement {
 function toMovements(txs: Transaction[], invs: PeriodInvoice[], purs: PeriodPurchase[]): Movement[] {
   const out: Movement[] = [
     ...txs.map(tx => ({
-      id: tx.id, date: tx.date, description: tx.description, detail: tx.detail || undefined,
+      id: tx.id, date: tx.secondaryDueDate || tx.date, description: tx.description, detail: tx.detail || undefined,
       category: tx.category, type: tx.type, amount: tx.amount, status: tx.status, source: tx.source,
       isProjection: tx.isProjection, reference: tx.reference, thirdParty: tx.thirdParty, rawTx: tx,
     })),
@@ -144,7 +151,7 @@ function buildChart(txs: Transaction[], invs: PeriodInvoice[], purs: PeriodPurch
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate() - offset + i);
       const key = dateKey(d);
-      const dayTxs  = txs.filter(tx => dateKey(parseTxDate(tx.date)) === key);
+      const dayTxs  = txs.filter(tx => dateKey(txDate(tx)) === key);
       const sums = mergePoint(sumTxs(dayTxs), invByKey[key] ?? 0, purByKey[key] ?? 0);
       return { label: DAYS_ES[d.getDay()], date: d.getDate(), ...sums };
     });
@@ -152,7 +159,7 @@ function buildChart(txs: Transaction[], invs: PeriodInvoice[], purs: PeriodPurch
 
   if (period === 'day') {
     const key = dateKey(ref);
-    const dayTxs  = txs.filter(tx => dateKey(parseTxDate(tx.date)) === key);
+    const dayTxs  = txs.filter(tx => dateKey(txDate(tx)) === key);
     const invPendInc = invByKey[key] ?? 0;
     const purPendEg  = purByKey[key] ?? 0;
     const { ingresos, egresos, pendingIngresos, pendingEgresos, proyIngresos, proyEgresos } = sumTxs(dayTxs);
@@ -174,7 +181,7 @@ function buildChart(txs: Transaction[], invs: PeriodInvoice[], purs: PeriodPurch
   let cur = new Date(firstDay);
   while (cur <= lastDay) {
     const key = dateKey(cur);
-    const dayTxs  = txs.filter(tx => dateKey(parseTxDate(tx.date)) === key);
+    const dayTxs  = txs.filter(tx => dateKey(txDate(tx)) === key);
     const sums = mergePoint(sumTxs(dayTxs), invByKey[key] ?? 0, purByKey[key] ?? 0);
     points.push({ label: DAYS_ES[cur.getDay()], date: cur.getDate(), ...sums });
     cur.setDate(cur.getDate() + 1);
@@ -325,7 +332,7 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
       cells.push({
         day: d,
         date,
-        txs:  txs.filter(tx => dateKey(parseTxDate(tx.date)) === key),
+        txs:  txs.filter(tx => dateKey(txDate(tx)) === key),
         invs: invs.filter(inv => dateKey(effDate(inv)) === key),
         purs: purs.filter(pur => dateKey(effDate(pur)) === key),
       });

@@ -13,7 +13,7 @@ import { useSettings } from '../contexts/SettingsContext';
 import { toInt,useQueryState } from '../hooks/useQueryState';
 import { canWrite, canWriteProjections } from '../lib/roles';
 import { cn } from '../lib/utils';
-import { cashFlowService,projectionsService,type CashFlowSummary,type PeriodData,type PeriodInvoice,type PeriodPurchase,type ThirdParty } from '../services';
+import { cashFlowService,projectionsService,type CashFlowAlert,type CashFlowSummary,type PeriodData,type PeriodInvoice,type PeriodPurchase,type ThirdParty } from '../services';
 import { DocumentDetailDrawer } from '../components/DocumentDetailDrawer';
 import type { Transaction } from '../services/transactions';
 
@@ -46,8 +46,33 @@ function txDate(tx: Transaction): Date {
 // was set, its own due date otherwise. The calendar, the chart and the table all
 // read it from here, so a document that was renegotiated sits on the day the
 // money is due rather than the day Siigo first asked for it.
+function effDateStr(doc: { date: string; dueDate: string; effectiveDueDate?: string }): string {
+  return doc.effectiveDueDate || doc.dueDate || doc.date;
+}
+
 function effDate(doc: { date: string; dueDate: string; effectiveDueDate?: string }): Date {
-  return parseTxDate(doc.effectiveDueDate || doc.dueDate || doc.date);
+  return parseTxDate(effDateStr(doc));
+}
+
+// The window the selected period covers, mirroring what the API gathers for it.
+function periodRange(period: Period, ref: Date): [Date, Date] {
+  // Midnight at both ends: the reference is `new Date()` while no date is in the
+  // URL, and comparing a due date parsed at midnight against a stamp carrying
+  // the current time would drop today's own flows.
+  if (period === 'day') {
+    const day = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate());
+    return [day, day];
+  }
+  if (period === 'week') {
+    const dow = ref.getDay();
+    const offset = dow === 0 ? 6 : dow - 1;
+    const from = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate() - offset);
+    return [from, new Date(from.getFullYear(), from.getMonth(), from.getDate() + 6)];
+  }
+  return [
+    new Date(ref.getFullYear(), ref.getMonth(), 1),
+    new Date(ref.getFullYear(), ref.getMonth() + 1, 0),
+  ];
 }
 
 function toDateStr(d: Date): string {
@@ -123,20 +148,23 @@ function mergePoint(base: ReturnType<typeof sumTxs>, pendInc: number, pendExp: n
 }
 
 // pendingFlows spreads a document's unpaid amount across its installment due
-// dates (dateKey → amount). Without a schedule it falls back to the whole
-// balance on the effective due date — matching the pre-installment behavior.
-function pendingFlows(doc: { pendingInstallments?: { dueDate: string; value: number }[]; balance: number; date: string; dueDate: string; effectiveDueDate?: string }): { key: string; amount: number }[] {
+// dates. Without a schedule it falls back to the whole balance on the effective
+// due date — matching the pre-installment behavior.
+function pendingFlows(doc: { pendingInstallments?: { dueDate: string; value: number }[]; balance: number; date: string; dueDate: string; effectiveDueDate?: string }): { dueDate: string; amount: number }[] {
   const sched = doc.pendingInstallments;
   if (sched && sched.length) {
-    return sched.map(s => ({ key: dateKey(parseTxDate(s.dueDate)), amount: s.value }));
+    return sched.map(s => ({ dueDate: s.dueDate, amount: s.value }));
   }
-  return [{ key: dateKey(effDate(doc)), amount: doc.balance }];
+  return [{ dueDate: effDateStr(doc), amount: doc.balance }];
 }
 
 function pendingByKey(docs: { pendingInstallments?: { dueDate: string; value: number }[]; balance: number; date: string; dueDate: string; effectiveDueDate?: string }[]): Record<string, number> {
   const out: Record<string, number> = {};
   for (const doc of docs) {
-    for (const f of pendingFlows(doc)) out[f.key] = (out[f.key] ?? 0) + f.amount;
+    for (const f of pendingFlows(doc)) {
+      const key = dateKey(parseTxDate(f.dueDate));
+      out[key] = (out[key] ?? 0) + f.amount;
+    }
   }
   return out;
 }
@@ -310,7 +338,49 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
 
   const activeFilters = (filterType ? 1 : 0) + (filterStatus ? 1 : 0) + (filterSource ? 1 : 0) + (filterRecord ? 1 : 0) + (filterParty ? 1 : 0);
 
-  const periodAlerts = summary.alerts;
+  // Alerts for the period on screen. The API's own list is the four largest
+  // open balances in the whole system, which says nothing about the week being
+  // looked at; these are built from the documents this period already loaded,
+  // one per unpaid installment falling inside it, so they follow the period
+  // switch and the date arrows like everything else on the page.
+  const periodAlerts = useMemo<CashFlowAlert[]>(() => {
+    const [from, to] = periodRange(period, currentDate);
+    const out: CashFlowAlert[] = [];
+
+    const collect = (
+      docs: (PeriodInvoice | PeriodPurchase)[],
+      type: 'success' | 'danger',
+      verb: string,
+      fallbackName: (doc: any) => string,
+    ) => {
+      for (const doc of docs) {
+        const flows = pendingFlows(doc);
+        flows.forEach((flow, i) => {
+          const d = parseTxDate(flow.dueDate);
+          if (d < from || d > to) return;
+          const state = doc.status === 'Parcial' ? 'Parcial' : 'Pendiente';
+          const part = flows.length > 1 ? ` · cuota ${i + 1}/${flows.length}` : '';
+          out.push({
+            id:          `${doc.id}-${i}`,
+            type,
+            title:       `${doc.reference} · ${verb} ${state}${part}`,
+            description: doc.thirdParty?.name || fallbackName(doc),
+            amount:      flow.amount,
+            dueDate:     flow.dueDate,
+            thirdParty:  doc.thirdParty,
+          });
+        });
+      }
+    };
+
+    collect(invs, 'success', 'Cobro', (d: PeriodInvoice) => d.customerName);
+    collect(purs, 'danger',  'Pago',  (d: PeriodPurchase) => d.providerName);
+
+    // Soonest first: inside a single period what matters is the order the money
+    // is due, with the larger amount first when two land on the same day.
+    return out.sort((a, b) =>
+      a.dueDate === b.dueDate ? b.amount - a.amount : a.dueDate.localeCompare(b.dueDate));
+  }, [invs, purs, period, currentDate]);
 
   const txTotalPages = Math.max(1, Math.ceil(filteredTxs.length / TX_PAGE_SIZE));
   const pagedTxs = filteredTxs.slice((txPage - 1) * TX_PAGE_SIZE, txPage * TX_PAGE_SIZE);

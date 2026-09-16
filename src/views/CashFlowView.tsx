@@ -34,11 +34,12 @@ function dateKey(d: Date) {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
 
-// The day a movement lands on. A movement sits on its own date until a payment
-// date is agreed for it; from then on the agreed date is when the money moves,
-// so that is where the calendar and the chart place it.
+// The day a movement lands on: the date it is expected to be paid, which the
+// server resolves — the agreed date when one was set, the movement's due date
+// otherwise. A Siigo receipt carries neither, so it stays on the date the cash
+// moved.
 function txDate(tx: Transaction): Date {
-  return parseTxDate(tx.secondaryDueDate || tx.date);
+  return parseTxDate(tx.effectiveDueDate || tx.date);
 }
 
 // The date a document is actually expected on: the agreed payment date when one
@@ -77,7 +78,7 @@ interface Movement {
 function toMovements(txs: Transaction[], invs: PeriodInvoice[], purs: PeriodPurchase[]): Movement[] {
   const out: Movement[] = [
     ...txs.map(tx => ({
-      id: tx.id, date: tx.secondaryDueDate || tx.date, description: tx.description, detail: tx.detail || undefined,
+      id: tx.id, date: tx.effectiveDueDate || tx.date, description: tx.description, detail: tx.detail || undefined,
       category: tx.category, type: tx.type, amount: tx.amount, status: tx.status, source: tx.source,
       isProjection: tx.isProjection, reference: tx.reference, thirdParty: tx.thirdParty, rawTx: tx,
     })),

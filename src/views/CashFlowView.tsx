@@ -340,12 +340,19 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
 
   // Alerts for the period on screen. The API's own list is the four largest
   // open balances in the whole system, which says nothing about the week being
-  // looked at; these are built from the documents this period already loaded,
-  // one per unpaid installment falling inside it, so they follow the period
-  // switch and the date arrows like everything else on the page.
+  // looked at; these are built from what this period already loaded — one per
+  // unpaid installment falling inside it, plus the movements still awaiting
+  // payment — so they follow the period switch and the date arrows like
+  // everything else on the page.
   const periodAlerts = useMemo<CashFlowAlert[]>(() => {
     const [from, to] = periodRange(period, currentDate);
     const out: CashFlowAlert[] = [];
+    // References already announced from the document side, so the movement that
+    // mirrors a factura or a compra does not raise a second alert for the same
+    // money. Compared case- and space-insensitively: the two tables do not
+    // always write the reference the same way.
+    const seenRefs = new Set<string>();
+    const refKey = (ref?: string | null) => (ref || '').trim().toUpperCase();
 
     const collect = (
       docs: (PeriodInvoice | PeriodPurchase)[],
@@ -360,6 +367,7 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
           if (d < from || d > to) return;
           const state = doc.status === 'Parcial' ? 'Parcial' : 'Pendiente';
           const part = flows.length > 1 ? ` · cuota ${i + 1}/${flows.length}` : '';
+          if (doc.reference) seenRefs.add(refKey(doc.reference));
           out.push({
             id:          `${doc.id}-${i}`,
             type,
@@ -376,11 +384,32 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
     collect(invs, 'success', 'Cobro', (d: PeriodInvoice) => d.customerName);
     collect(purs, 'danger',  'Pago',  (d: PeriodPurchase) => d.providerName);
 
+    // Movements still marked Pendiente are money that has not moved either;
+    // they are only kept in another table. Projections stay out — those are a
+    // forecast, not something owed to or by anyone — and so does anything whose
+    // reference the document side already raised.
+    for (const tx of txs) {
+      if (tx.isProjection || tx.status !== 'Pendiente') continue;
+      if (tx.reference && seenRefs.has(refKey(tx.reference))) continue;
+      const d = txDate(tx);
+      if (d < from || d > to) continue;
+      const verb = tx.type === 'Ingreso' ? 'Cobro' : 'Pago';
+      out.push({
+        id:          tx.id,
+        type:        tx.type === 'Ingreso' ? 'success' : 'danger',
+        title:       tx.reference ? `${tx.reference} · ${verb} Pendiente` : `${verb} Pendiente`,
+        description: tx.thirdParty?.name || tx.description,
+        amount:      tx.amount,
+        dueDate:     tx.effectiveDueDate || tx.date,
+        thirdParty:  tx.thirdParty,
+      });
+    }
+
     // Soonest first: inside a single period what matters is the order the money
     // is due, with the larger amount first when two land on the same day.
     return out.sort((a, b) =>
       a.dueDate === b.dueDate ? b.amount - a.amount : a.dueDate.localeCompare(b.dueDate));
-  }, [invs, purs, period, currentDate]);
+  }, [invs, purs, txs, period, currentDate]);
 
   const txTotalPages = Math.max(1, Math.ceil(filteredTxs.length / TX_PAGE_SIZE));
   const pagedTxs = filteredTxs.slice((txPage - 1) * TX_PAGE_SIZE, txPage * TX_PAGE_SIZE);

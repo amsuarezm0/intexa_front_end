@@ -340,68 +340,36 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
 
   // Alerts for the period on screen. The API's own list is the four largest
   // open balances in the whole system, which says nothing about the week being
-  // looked at; these are built from what this period already loaded — one per
-  // unpaid installment falling inside it, plus the movements still awaiting
-  // payment — so they follow the period switch and the date arrows like
-  // everything else on the page.
+  // looked at; these are built from what this period already loaded, so they
+  // follow the period switch and the date arrows like everything on the page.
+  //
+  // Only facturas de venta still awaiting payment: one alert per unpaid
+  // installment falling inside the period. Compras and pending movements stay
+  // out — this panel answers "what is owed to us and when", so money going the
+  // other way would only dilute it.
   const periodAlerts = useMemo<CashFlowAlert[]>(() => {
     const [from, to] = periodRange(period, currentDate);
     const out: CashFlowAlert[] = [];
-    // References already announced from the document side, so the movement that
-    // mirrors a factura or a compra does not raise a second alert for the same
-    // money. Compared case- and space-insensitively: the two tables do not
-    // always write the reference the same way.
-    const seenRefs = new Set<string>();
-    const refKey = (ref?: string | null) => (ref || '').trim().toUpperCase();
 
-    const collect = (
-      docs: (PeriodInvoice | PeriodPurchase)[],
-      type: 'success' | 'danger',
-      verb: string,
-      fallbackName: (doc: any) => string,
-    ) => {
-      for (const doc of docs) {
-        const flows = pendingFlows(doc);
-        flows.forEach((flow, i) => {
-          const d = parseTxDate(flow.dueDate);
-          if (d < from || d > to) return;
-          const state = doc.status === 'Parcial' ? 'Parcial' : 'Pendiente';
-          const part = flows.length > 1 ? ` · cuota ${i + 1}/${flows.length}` : '';
-          if (doc.reference) seenRefs.add(refKey(doc.reference));
-          out.push({
-            id:          `${doc.id}-${i}`,
-            type,
-            title:       `${doc.reference} · ${verb} ${state}${part}`,
-            description: doc.thirdParty?.name || fallbackName(doc),
-            amount:      flow.amount,
-            dueDate:     flow.dueDate,
-            thirdParty:  doc.thirdParty,
-          });
+    for (const inv of invs) {
+      // Settled documents can still come back in the period payload; a zero
+      // balance (or a zero installment) is nothing left to collect.
+      if (inv.status === 'Pagada' || inv.balance <= 0) continue;
+      const flows = pendingFlows(inv).filter(f => f.amount > 0);
+      flows.forEach((flow, i) => {
+        const d = parseTxDate(flow.dueDate);
+        if (d < from || d > to) return;
+        const state = inv.status === 'Parcial' ? 'Parcial' : 'Pendiente';
+        const part  = flows.length > 1 ? ` · cuota ${i + 1}/${flows.length}` : '';
+        out.push({
+          id:          `${inv.id}-${i}`,
+          type:        'success',
+          title:       `${inv.reference} · Cobro ${state}${part}`,
+          description: inv.thirdParty?.name || inv.customerName,
+          amount:      flow.amount,
+          dueDate:     flow.dueDate,
+          thirdParty:  inv.thirdParty,
         });
-      }
-    };
-
-    collect(invs, 'success', 'Cobro', (d: PeriodInvoice) => d.customerName);
-    collect(purs, 'danger',  'Pago',  (d: PeriodPurchase) => d.providerName);
-
-    // Movements still marked Pendiente are money that has not moved either;
-    // they are only kept in another table. Projections stay out — those are a
-    // forecast, not something owed to or by anyone — and so does anything whose
-    // reference the document side already raised.
-    for (const tx of txs) {
-      if (tx.isProjection || tx.status !== 'Pendiente') continue;
-      if (tx.reference && seenRefs.has(refKey(tx.reference))) continue;
-      const d = txDate(tx);
-      if (d < from || d > to) continue;
-      const verb = tx.type === 'Ingreso' ? 'Cobro' : 'Pago';
-      out.push({
-        id:          tx.id,
-        type:        tx.type === 'Ingreso' ? 'success' : 'danger',
-        title:       tx.reference ? `${tx.reference} · ${verb} Pendiente` : `${verb} Pendiente`,
-        description: tx.thirdParty?.name || tx.description,
-        amount:      tx.amount,
-        dueDate:     tx.effectiveDueDate || tx.date,
-        thirdParty:  tx.thirdParty,
       });
     }
 
@@ -409,7 +377,7 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
     // is due, with the larger amount first when two land on the same day.
     return out.sort((a, b) =>
       a.dueDate === b.dueDate ? b.amount - a.amount : a.dueDate.localeCompare(b.dueDate));
-  }, [invs, purs, txs, period, currentDate]);
+  }, [invs, period, currentDate]);
 
   const txTotalPages = Math.max(1, Math.ceil(filteredTxs.length / TX_PAGE_SIZE));
   const pagedTxs = filteredTxs.slice((txPage - 1) * TX_PAGE_SIZE, txPage * TX_PAGE_SIZE);
@@ -665,7 +633,10 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
       {periodAlerts.length > 0 && (
         <div className="bg-white rounded-3xl sm:rounded-[40px] border border-slate-100 card-shadow overflow-hidden">
           <div className="px-6 sm:px-8 py-5 border-b border-slate-100 flex items-center justify-between">
-            <h3 className="text-lg font-black text-slate-900 tracking-tight">Alertas de Liquidez</h3>
+            <div>
+              <h3 className="text-lg font-black text-slate-900 tracking-tight">Alertas de Liquidez</h3>
+              <p className="text-xs font-semibold text-slate-400">Facturas de venta pendientes de pago</p>
+            </div>
             <span className="text-xs font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full">
               {periodAlerts.length} {periodAlerts.length === 1 ? 'alerta' : 'alertas'}
             </span>

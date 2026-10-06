@@ -13,7 +13,7 @@ import { useSettings } from '../contexts/SettingsContext';
 import { toInt,useQueryState } from '../hooks/useQueryState';
 import { canWrite, canWriteProjections } from '../lib/roles';
 import { cn } from '../lib/utils';
-import { cashFlowService,projectionsService,type CashFlowAlert,type CashFlowSummary,type PeriodData,type PeriodInvoice,type PeriodPurchase,type ThirdParty } from '../services';
+import { cashFlowService,dashboardService,type BankBalance,type CashFlowAlert,type CashFlowSummary,type PeriodData,type PeriodInvoice,type PeriodPurchase,type ThirdParty } from '../services';
 import { DocumentDetailDrawer } from '../components/DocumentDetailDrawer';
 import type { Transaction } from '../services/transactions';
 
@@ -246,7 +246,10 @@ const EMPTY_PERIOD: PeriodData = { transactions: [], invoices: [], purchases: []
 
 export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { onCreateMovement?: () => void; onCreateProjection?: () => void; user?: import('../App').LoggedInUser | null }) {
   const [summary, setSummary] = useState<CashFlowSummary>({ days: [], balance: 0, projectedBalance: 0, projectedChange: 0, alerts: [] });
-  const [proj30, setProj30] = useState(0);
+  // Saldo bancario cargado por tesorería — the starting point of the banner.
+  // Null until it loads, and still null when nobody loaded it today: the
+  // endpoint only hands back a balance updated on the current day.
+  const [bankBalance, setBankBalance] = useState<BankBalance | null>(null);
   const [periodData, setPeriodData] = useState<PeriodData>(EMPTY_PERIOD);
   const [isLoading, setIsLoading] = useState(true);
   const [chartLoading, setChartLoading] = useState(false);
@@ -278,7 +281,7 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
   const [selectedTx, setSelectedTx]   = useState<Transaction | null>(null);
   const [selectedDoc, setSelectedDoc] = useState<RawDoc | null>(null);
 
-  // Initial load: summary + projections. `silent` re-reads after a mutation
+  // Initial load: summary + bank balance. `silent` re-reads after a mutation
   // without collapsing the page into skeletons.
   const load = useCallback(async ({ silent = false } = {}) => {
     if (!silent) {
@@ -286,12 +289,12 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
       setError('');
     }
     try {
-      const [s, p30] = await Promise.all([
+      const [s, bank] = await Promise.all([
         cashFlowService.getSummary(),
-        projectionsService.getSummary(30),
+        dashboardService.getBankBalance().catch(() => null),
       ]);
       setSummary(prev => ({ ...prev, ...(s ?? {}) }));
-      setProj30(p30?.estimatedBalance ?? 0);
+      setBankBalance(bank ?? null);
     } catch (err: any) {
       if (!silent) setError(err.message ?? 'No se pudo cargar el flujo de caja.');
     } finally {
@@ -354,7 +357,7 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
     for (const inv of invs) {
       // Settled documents can still come back in the period payload; a zero
       // balance (or a zero installment) is nothing left to collect.
-      if (inv.status === 'Pagada' || inv.balance <= 0) continue;
+      if (inv.status === 'Completado' || inv.balance <= 0) continue;
       const flows = pendingFlows(inv).filter(f => f.amount > 0);
       flows.forEach((flow, i) => {
         const d = parseTxDate(flow.dueDate);
@@ -382,8 +385,27 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
   const txTotalPages = Math.max(1, Math.ceil(filteredTxs.length / TX_PAGE_SIZE));
   const pagedTxs = filteredTxs.slice((txPage - 1) * TX_PAGE_SIZE, txPage * TX_PAGE_SIZE);
 
-  const currentBalance = summary.balance;
-  const projectedBalance = proj30;
+  // The banner's two ends. Saldo inicial is the bank balance tesorería loaded;
+  // saldo final applies to it the money that actually moved inside the selected
+  // period. That is the cash receipts — RC in, RP out, plus completed manual
+  // movements — not FV/FC totals: an invoice can be settled by several RCs,
+  // reduced by an NC or crossed without cash, and an RP pays payroll, taxes and
+  // other things no FC records. Projections and Anulados never moved money.
+  const { collected, paid } = useMemo(() => {
+    const [from, to] = periodRange(period, currentDate);
+    let collected = 0, paid = 0;
+    for (const tx of txs) {
+      if (tx.status !== 'Completado' || tx.isProjection) continue;
+      const d = parseTxDate(tx.effectiveDueDate || tx.dueDate || tx.date);
+      if (d < from || d > to) continue;
+      if (tx.type === 'Ingreso') collected += tx.amount;
+      else paid += tx.amount;
+    }
+    return { collected, paid };
+  }, [txs, period, currentDate]);
+
+  const initialBalance = bankBalance?.amount ?? null;
+  const finalBalance = (initialBalance ?? 0) + collected - paid;
 
   const calendarCells = useMemo(() => {
     if (period !== 'month') return [];
@@ -432,6 +454,9 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
 
   const chartData = buildChart(txs, invs, purs, period, currentDate);
   const title = periodTitle(period, currentDate);
+  const saldoUpdatedLabel = bankBalance?.updatedAt
+    ? `Actualizado: ${new Date(bankBalance.updatedAt).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}`
+    : '';
 
   return (
     <>
@@ -468,16 +493,27 @@ export function CashFlowView({ onCreateMovement, onCreateProjection, user }: { o
       </div>
 
       <div className="bg-brand-dark p-5 sm:p-6 rounded-3xl sm:rounded-[40px] text-white relative overflow-hidden group">
-        <div className="relative z-10 flex items-center justify-between gap-6">
-          <div className="flex items-start gap-8">
+        <div className="relative z-10 flex flex-wrap items-center justify-between gap-y-4 gap-x-6">
+          <div className="flex flex-wrap items-start gap-y-4 gap-x-6 sm:gap-x-8">
             <div>
-              <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest">Balance Total</p>
-              <p className="text-2xl font-black tracking-tight mt-1" title={formatCurrency(currentBalance)}>{formatCurrency(currentBalance)}</p>
+              <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest">Saldo Inicial (Bancos)</p>
+              <p className="text-2xl font-black tracking-tight mt-1" title={initialBalance === null ? 'Sin saldo bancario cargado hoy' : formatCurrency(initialBalance)}>
+                {initialBalance === null ? '—' : formatCurrency(initialBalance)}
+              </p>
+              <p className="text-[10px] font-semibold opacity-50 mt-0.5">
+                {initialBalance === null ? 'Sin saldo cargado hoy' : saldoUpdatedLabel}
+              </p>
             </div>
             <div className="w-px self-stretch bg-white/10" />
             <div>
-              <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest">Saldo Proyectado (30d)</p>
-              <p className="text-2xl font-black tracking-tight mt-1" title={formatCurrency(projectedBalance)}>{formatCurrency(projectedBalance)}</p>
+              <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest">Saldo Final ({PERIOD_LABELS[period]})</p>
+              <p className="text-2xl font-black tracking-tight mt-1" title={formatCurrency(finalBalance)}>{formatCurrency(finalBalance)}</p>
+              <p className="text-[10px] font-semibold opacity-50 mt-0.5">
+                <span className="text-brand-success" title={`Ingresos recibidos (RC y manuales): ${formatCurrency(collected)}`}>+{formatCompact(collected)}</span>
+                {' · '}
+                <span className="text-brand-danger" title={`Egresos pagados (RP y manuales): ${formatCurrency(paid)}`}>-{formatCompact(paid)}</span>
+                {' · '}{title}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
